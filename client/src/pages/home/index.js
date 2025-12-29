@@ -9,7 +9,6 @@ export const socket = io('https://link-up-server2.onrender.com', {
     transports: ["websocket"], // This is the crucial part
     upgrade: false
 });
-upgrade: false
 
 function Home() {
     const { user } = useSelector(state => state.userReducer);
