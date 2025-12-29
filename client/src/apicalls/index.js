@@ -1,5 +1,5 @@
 import axios from "axios";
-export const url="http://localhost:3000";
+export const url="https://link-up-server.onrender.com";
 export const axiosInstance=axios.create({
     headers:{
         authorization:`Bearer ${localStorage.getItem('token')}`
