@@ -5,7 +5,7 @@ import Sidebar from "./components/sidebar";
 import {io} from "socket.io-client";
 import { useEffect } from "react";
 import { useState } from "react";
-export const socket=io('https://link-up-server1.onrender.com',);
+export const socket=io('https://link-up-server2.onrender.com');
 
 function Home() {
     const {user} =useSelector(state=>state.userReducer);
