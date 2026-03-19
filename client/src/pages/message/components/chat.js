@@ -9,8 +9,10 @@ import store from "../../../redux/store";
 import { setSelectedChat, setAllChats } from "../../../redux/userSlice";
 import { useNavigate } from "react-router-dom";
 import moment from "moment";
+import EmojiPicker from "emoji-picker-react";
 function ChatArea({ socket }) {
     const { user, allChats } = useSelector(state => state.userReducer);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const { id } = useParams();
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -37,12 +39,13 @@ function ChatArea({ socket }) {
     }, [id, allChats]);
     const [message, setMessage] = useState('');
     const [allMessages, setAllMessages] = useState([]);
-    const sendMessage = async () => {
+    const sendMessage = async (image) => {
         try {
             const newMessage = {
                 chatId: id,
                 sender: user._id,
-                text: message
+                text: message,
+                image:image
             }
             socket.emit('send-message', {
                 ...newMessage,
@@ -53,6 +56,7 @@ function ChatArea({ socket }) {
             const response = await createNewMessage(newMessage);
             if (response.success) {
                 setMessage('');
+                setShowEmojiPicker(false);
             }
             else {
                 toast.error(response.message);
@@ -143,24 +147,41 @@ function ChatArea({ socket }) {
         else if (diff == 1) return `Yesterday ${moment(timestamp).format('hh:mm A')}`
         else return moment(timestamp).format('MMM D,hh:mm A');
     }
+    const sendImage=async(e)=>{
+        const file=e.target.files[0];
+        const reader=new FileReader(file);
+        reader.readAsDataURL(file);
+        reader.onloadend=async()=>{
+            sendMessage(reader.result);
+        }
+    }
     return (
         <>
             {selectedChat &&
                 <div className="app-chat-area">
-                    <div className='messages-area'>
-                        {allMessages.map((msg) => {
-                            const isMessageSender = msg.sender === user._id;
-                            return <div className="message-container">
-                                <div className={isMessageSender ? "send-message" : "received-message"}>{msg.text}</div>
-                                <div className={isMessageSender ? "message-info-sender" : "message-info"}>
-                                    <div className={isMessageSender ? "message-timestamp-sender" : "message-timestamp"}>
-                                        {formatTime(msg.createdAt)}
+                    <div className="scrollbar-container">
+                        <div className='messages-area'>
+                            {allMessages.map((msg) => {
+                                const isMessageSender = msg.sender === user._id;
+                                return <div className="message-container">
+                                    <div className={isMessageSender ? "send-message" : "received-message"}>
+                                        <div>{msg.text}</div>
+                                        <div>{msg.image && <img src={msg.image} alt="image" height='120' width='120'/>}</div>
                                     </div>
-                                    <div className="message-icon-sender">{isMessageSender && !msg.read && <i className="fa-solid fa-check "></i>}</div>
-                                    <div className="message-icon-sender">{isMessageSender && msg.read && <i className="fa-solid fa-check-double "></i>}</div>
+                                    <div className={isMessageSender ? "message-info-sender" : "message-info"}>
+                                        <div className={isMessageSender ? "message-timestamp-sender" : "message-timestamp"}>
+                                            {formatTime(msg.createdAt)}
+                                        </div>
+                                        <div className="message-icon-sender">{isMessageSender && !msg.read && <i className="fa-solid fa-check "></i>}</div>
+                                        <div className="message-icon-sender">{isMessageSender && msg.read && <i className="fa-solid fa-check-double "></i>}</div>
+                                    </div>
                                 </div>
-                            </div>
-                        })}
+                            })}
+                        </div>
+                        {showEmojiPicker && <EmojiPicker className="emoji-picker"
+                          onEmojiClick={(e)=>{ setMessage((prev)=>prev+e.emoji);
+                          }}></EmojiPicker>
+                        }
                     </div>
                     <div className="send-message-div">
                         <input type="text" className="send-message-input" placeholder="Type a message"
@@ -177,10 +198,16 @@ function ChatArea({ socket }) {
                                     sendMessage();
                                 }
                             }} />
-                        <button className="fa fa-paper-plane send-message-btn" aria-hidden="true"
-                            onClick={sendMessage}></button>
                     </div>
-                </div>}
+                    <label for ='file' className="send-image-btn"><i class="fa-solid fa-camera"></i></label>
+                    <input type='file' id='file' style={{display:'none'}}
+                     accept="image/jpg, image/jpeg, image/gif, image/png" onChange={sendImage}></input>
+                    <button className="fa fa-smile-o send-emoji-btn" aria-hidden="true"
+                    onClick={()=>{setShowEmojiPicker(!showEmojiPicker)}}></button>
+                    <button className="fa fa-paper-plane send-message-btn" aria-hidden="true"
+                        onClick={sendMessage}></button>
+                </div>
+            }
         </>
     );
 }

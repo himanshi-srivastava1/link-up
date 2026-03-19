@@ -161,7 +161,7 @@ function UsersList({ searchKey, socket, onlineUser }) {
                 }
                 return (
                     <div className="user-on-filter" onClick={() => openChat(user)} key={user._id}>
-                       {onlineUser.includes(user._id) && <div className="online-bubble"></div> }
+                        {onlineUser.includes(user._id) && <div className="online-bubble"></div>}
                         <div className="user-search-filter" >
                             <div className="filtered-user">
                                 <div className="filter-user-display">

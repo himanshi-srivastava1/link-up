@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {toast} from "react-hot-toast";
-import { getLoggedUser, getAllUsers} from "../apicalls/users.js";
+import { toast } from "react-hot-toast";
+import { getLoggedUser, getAllUsers } from "../apicalls/users.js";
 import { getAllChats } from "../apicalls/chat.js";
 import { useDispatch, useSelector } from "react-redux";
 import { hideLoader, showLoader } from "../redux/loaderSlice.js";
@@ -9,7 +9,7 @@ import { setUser, setAllUsers, setAllChats } from "../redux/userSlice.js";
 import Loader from './loader.js';
 
 function ProtectedRoute({ children }) {
-   const {user, allChats}=useSelector(state=>state.userReducer);
+   const { user, allChats } = useSelector(state => state.userReducer);
    const navigate = useNavigate();
    const dispatch = useDispatch();
 
@@ -27,7 +27,7 @@ function ProtectedRoute({ children }) {
             navigate("/login");
          }
       }
-      catch(error) {
+      catch (error) {
          toast.error(error.message);
          dispatch(hideLoader());
          navigate("/login");
@@ -48,7 +48,7 @@ function ProtectedRoute({ children }) {
             navigate("/login");
          }
       }
-      catch(error) {
+      catch (error) {
          toast.error(error.message);
          dispatch(hideLoader());
          navigate("/login");
@@ -68,7 +68,7 @@ function ProtectedRoute({ children }) {
             navigate("/login");
          }
       }
-      catch(error) {
+      catch (error) {
          toast.error(error.message);
          dispatch(hideLoader());
          navigate("/login");
@@ -84,12 +84,12 @@ function ProtectedRoute({ children }) {
       else {
          navigate("/login");
       }
-   },[]);
+   }, []);
    if (localStorage.getItem('token')) {
-       if (!user || allChats.length === 0) {
-            return <Loader />;
-       }
-       return <div>{children}</div>;
+      if (!user) {
+         return <Loader />;
+      }
+      return <div>{children}</div>;
    }
 
    return null;

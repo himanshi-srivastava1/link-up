@@ -10,6 +10,7 @@ function Header2({ socket, onlineUser }) {
     const [lastSeen, setLastSeen] = useState({});
     const { allUsers, allChats, selectedChat, selectedUser, user } = useSelector(state => state.userReducer);
     const { id } = useParams();
+    const navigate = useNavigate();
     function MessagePage() {
         const dispatch = useDispatch();
         const { allChats, selectedChat } = useSelector(state => state.userReducer);
@@ -107,7 +108,7 @@ function Header2({ socket, onlineUser }) {
         }
         return `Last seen on ${lastSeenDate.format('MMM D, hh:mm A')}`;
     };
-    const expression="Last seen just now";
+    const expression = "Last seen just now";
     return (
         <div className="chat-header">
             <div className="back-logo">
@@ -116,10 +117,15 @@ function Header2({ socket, onlineUser }) {
                 </a>
             </div>
             <div className="chat-user-profile">
-                <div className="chat-user-profile-pic" style={onlineUser.includes(selectedUser?._id) ?
-                    { border: "3px solid #21e666ff" }
-                    : {}}>{getinitials()}
-                </div>
+                {selectedUser?.profilePic &&
+                    <img src={selectedUser.profilePic} alt="PP" className="chat-user-profile-pic" style={onlineUser.includes(selectedUser?._id) ?
+                        { border: "3px solid #21e666ff" }
+                        : {}} onClick={() => navigate(`/profile/${selectedUser?._id}`)}/>}
+                {!selectedUser?.profilePic &&
+                    <div className="chat-user-profile-pic" style={onlineUser.includes(selectedUser?._id) ?
+                        { border: "3px solid #21e666ff" }
+                        : {}} onClick={() => navigate(`/profile/${selectedUser?._id}`)}>{getinitials()}
+                    </div>}
                 <div className="chat-user-name">{getfullname()}</div>
                 {isTyping && <div className="typing">typing...</div>}
             </div>

@@ -5,7 +5,7 @@ import Sidebar from "./components/sidebar";
 import { io } from "socket.io-client";
 import { useEffect } from "react";
 import { useState } from "react";
-export const socket = io('https://link-up-server2.onrender.com', {
+export const socket = io('http://localhost:3001', {
     transports: ["websocket"], // This is the crucial part
     upgrade: false
 });

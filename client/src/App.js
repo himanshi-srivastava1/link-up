@@ -3,6 +3,7 @@ import Home from './pages/home';
 import Signup from './pages/signup';
 import Login from './pages/login';
 import Message from './pages/message';
+import Profile from "./pages/profile";
 import { Toaster } from 'react-hot-toast';
 import ProtectedRoute from './components/protectedRoute.js';
 import Loader from "./components/loader.js";
@@ -25,6 +26,11 @@ function App() {
           </Route>
           <Route path='/login' element={<Login />}></Route>
           <Route path='/signup' element={<Signup />}></Route>
+          <Route path='/profile/:id' element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>}>
+          </Route>
           <Route path='/message/:id'  element={
             <ProtectedRoute>
               <Message/>

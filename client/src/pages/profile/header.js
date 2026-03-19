@@ -1,6 +1,7 @@
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-function Header() {
+import image from "./index.js";
+function Header({profileImg}) {
     const { user } = useSelector(state => state.userReducer);
     const navigate = useNavigate();
     function getinitials() {
@@ -17,14 +18,21 @@ function Header() {
     }
     return (
         <div className="app-header">
-            <div className="app-logo">
-                <i className="fa fa-comments" aria-hidden="true"></i>
-                Link Up
+            <div className='packed-logo'>
+                <div className="back-logo">
+                    <a href='/' className="back-button">
+                        <i className="fa-solid fa-arrow-left" ></i>
+                    </a>
+                </div>
+                <div className="app-logo">
+                    <i className="fa fa-comments" aria-hidden="true"></i>
+                    Link Up
+                </div>
             </div>
             <div className="app-user-profile">
                 <div className="logged-user-name">{getfullname()}</div>
-                {user?.profilePic && <img src={user.profilePic} alt="PP" onClick={() => navigate(`/profile/${user._id}`)} className="logged-user-profile-pic"></img>}
-                {!user?.profilePic && <div className="logged-user-profile-pic" onClick={() => navigate(`/profile/${user._id}`)}>{getinitials()}</div>}
+                {profileImg && <img src={profileImg} alt='PP' className="logged-user-profile-pic"/>}
+                {!profileImg && <div className="logged-user-profile-pic">{getinitials()}</div>}
             </div>
         </div>
     );
