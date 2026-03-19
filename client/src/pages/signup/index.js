@@ -1,11 +1,11 @@
-import React, {  useState } from "react";
+import React, { useState } from "react";
 import { signupuser } from '../../apicalls/auth.js';
 import { Link } from 'react-router-dom';
-import {toast} from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { showLoader, hideLoader } from "../../redux/loaderSlice.js";
 function Signup() {
-    const dispatch=useDispatch();
+    const dispatch = useDispatch();
     const [user, setUser] = useState({
         firstname: "",
         lastname: "",
@@ -14,19 +14,19 @@ function Signup() {
     });
     async function onFormSubmit(event) {
         event.preventDefault();
-        let response=null;
+        let response = null;
         try {
             dispatch(showLoader());
-            response =await signupuser(user);
+            response = await signupuser(user);
             dispatch(hideLoader());
-            if(response.success){
+            if (response.success) {
                 toast.success(response.message);
             }
-            else{
+            else {
                 toast.error(response.message);
             }
         }
-        catch(err) {
+        catch (err) {
             dispatch(hideLoader());
             console.log(err);
             toast.error(err.message);

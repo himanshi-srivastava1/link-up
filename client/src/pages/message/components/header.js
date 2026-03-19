@@ -25,6 +25,11 @@ function Header() {
                 <div className="logged-user-name">{getfullname()}</div>
                 {user?.profilePic && <img src={user.profilePic} alt="PP" className="logged-user-profile-pic" onClick={()=>navigate(`/profile/${user._id}`)}></img>}
                 {!user?.profilePic && <div className="logged-user-profile-pic" onClick={()=>navigate(`/profile/${user._id}`)}>{getinitials()}</div>}
+                
+                <i className="fa fa-sign-out logout-btn" title="Logout" aria-hidden="true" onClick={() => {
+                    localStorage.removeItem('token');
+                    window.location.href = '/login';
+                }}></i>
             </div>
         </div>
     );

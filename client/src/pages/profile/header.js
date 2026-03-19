@@ -33,6 +33,10 @@ function Header({profileImg}) {
                 <div className="logged-user-name">{getfullname()}</div>
                 {profileImg && <img src={profileImg} alt='PP' className="logged-user-profile-pic"/>}
                 {!profileImg && <div className="logged-user-profile-pic">{getinitials()}</div>}
+                <i className="fa fa-sign-out logout-btn" title="Logout" aria-hidden="true" onClick={() => {
+                    localStorage.removeItem('token');
+                    window.location.href = '/login';
+                }}></i>
             </div>
         </div>
     );
