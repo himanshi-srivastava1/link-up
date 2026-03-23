@@ -28,13 +28,16 @@ function ChatArea({ socket }) {
 
     useEffect(() => {
         if (allChats && allChats.length > 0) {
-            const chatToRestore = allChats.find(chat => chat._id === id);
+            const chatToRestore = allChats.find(chat => String(chat._id).trim() === String(id).trim());
 
             if (chatToRestore) {
                 dispatch(setSelectedChat(chatToRestore));
             } else {
-                toast.error("Invalid chat");
-                navigate("/");
+                // Instead of immediately kicking the user to the home screen, 
+                // we'll wait or gently guide them.
+                console.error("Chat ID not found in allChats:", id);
+                // toast.error("Invalid chat");
+                // navigate("/");
             }
         }
     }, [id, allChats, navigate, dispatch]);

@@ -18,20 +18,22 @@ function Header2({ socket, onlineUser }) {
         useEffect(() => {
             if (!selectedChat && allChats.length > 0) {
                 dispatch(showLoader());
-                const chatToRestore = allChats.find(u => u._id === id);
+                const chatToRestore = allChats.find(u => String(u._id).trim() === String(id).trim());
                 if (chatToRestore) {
                     dispatch(setSelectedChat(chatToRestore));
                     dispatch(hideLoader());
                 }
                 else {
-                    toast.error("Invalid chat ");
+                    console.error("Invalid chat in Header2 Restore");
                     dispatch(hideLoader())
-                    navigate("/");
+                    // toast.error("Invalid chat");
+                    // navigate("/");
                 }
             }
         }, [id, allChats, selectedChat, dispatch]);
         useEffect(() => {
-            const chatToRestore = allChats.find(u => u._id === id);
+            if (!allChats || allChats.length === 0 || !allUsers || allUsers.length === 0) return;
+            const chatToRestore = allChats.find(u => String(u._id).trim() === String(id).trim());
             if (chatToRestore) {
                 const id2 = chatToRestore.members.map(m => m._id).find(i => i !== user._id);
                 const userToRestore = allUsers.find(u => u._id === id2);
@@ -40,15 +42,17 @@ function Header2({ socket, onlineUser }) {
                     dispatch(hideLoader());
                 }
                 else {
-                    toast.error("Invalid user");
+                    console.error("Invalid user in Header2 Restore");
                     dispatch(hideLoader())
-                    navigate("/");
+                    // toast.error("Invalid user");
+                    // navigate("/");
                 }
             }
             else {
-                toast.error("Invalid chat ");
+                console.error("Invalid chat in Header2 Second Restore");
                 dispatch(hideLoader())
-                navigate("/");
+                // toast.error("Invalid chat");
+                // navigate("/");
             }
 
         }, [id, allUsers, selectedUser, allChats, dispatch]);

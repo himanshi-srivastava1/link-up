@@ -1,7 +1,7 @@
 import { axiosInstance , url} from "./index.js";
 export const getAllChats=async()=>{
     try{
-         const response=await axiosInstance.get('/api/chat/get-all-chats');
+         const response=await axiosInstance.get(`/api/chat/get-all-chats?t=${new Date().getTime()}`);
          return response.data;
     }
     catch(err){
