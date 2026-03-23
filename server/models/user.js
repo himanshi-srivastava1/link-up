@@ -25,6 +25,14 @@ const userSchema=new mongoose.Schema({
     lastSeen:{
         type:Date,
         default:Date.now()
+    },
+    resetOtp: {
+        type: String,
+        required: false
+    },
+    resetOtpExpiry: {
+        type: Date,
+        required: false
     }
 }, { timestamps:true });
 module.exports=mongoose.model('users',userSchema);

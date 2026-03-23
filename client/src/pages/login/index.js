@@ -1,41 +1,41 @@
 import React, { useState } from "react";
 import { loginuser } from '../../apicalls/auth.js';
-import {Link} from "react-router-dom";
-import {toast} from "react-hot-toast";
+import { Link } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { hideLoader, showLoader } from "../../redux/loaderSlice.js";
-function Login(){
-    const dispatch=useDispatch();
-     const [user, setUser] = useState({
-            email: "",
-            password: ""
-        });
-        async function onFormSubmit(event){
-                event.preventDefault();
-                let response=null;
-                try {
-                    dispatch(showLoader());
-                    response =await loginuser(user);
-                    dispatch(hideLoader());
-                    if(response.success){
-                        toast.success(response.message);  
-                        localStorage.setItem('token', response.token);
-                        window.location.href="/";           
-                    }
-                    else{
-                        dispatch(hideLoader());
-                        console.log(response);
-                        toast.error(response.message);
-                    }
-                }
-                catch(err){
-                    console.log(err);
-                    toast.error(err.message);
-                };
+function Login() {
+    const dispatch = useDispatch();
+    const [user, setUser] = useState({
+        email: "",
+        password: ""
+    });
+    async function onFormSubmit(event) {
+        event.preventDefault();
+        let response = null;
+        try {
+            dispatch(showLoader());
+            response = await loginuser(user);
+            dispatch(hideLoader());
+            if (response.success) {
+                toast.success(response.message);
+                localStorage.setItem('token', response.token);
+                window.location.href = "/";
             }
-    return(
-    <div className="container">
-            <div className="container-back-img"></div> 
+            else {
+                dispatch(hideLoader());
+                console.log(response);
+                toast.error(response.message);
+            }
+        }
+        catch (err) {
+            console.log(err);
+            toast.error(err.message);
+        };
+    }
+    return (
+        <div className="container">
+            <div className="container-back-img"></div>
             <div className="container-back-color"></div>
             <div className="card">
                 <div className="card_title">
@@ -50,9 +50,12 @@ function Login(){
                         <button className="signup_button">Sign In</button>
                     </form>
                 </div>
+                <div className="card_links">
+                    <Link to="/forgot_pass">Forgot Password? </Link>
+                </div>
                 <div className="card_terms">
                     <span>Don't have an account yet?
-                        <Link to ="/signup"> Sign Up</Link>
+                        <Link to="/signup"> Sign Up</Link>
                     </span>
                 </div>
             </div>
