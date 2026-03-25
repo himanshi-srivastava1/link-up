@@ -17,3 +17,12 @@ export const getAllMessages=async(chatId)=>{
         return err;
     }
 };
+
+export const deleteMessage = async (messageId) => {
+    try {
+        const response = await axiosInstance.delete(`/api/message/delete-message/${messageId}`);
+        return response.data;
+    } catch (err) {
+        return err;
+    }
+};

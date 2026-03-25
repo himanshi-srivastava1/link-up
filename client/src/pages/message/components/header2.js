@@ -124,7 +124,7 @@ function Header2({ socket, onlineUser }) {
                 {selectedUser?.profilePic &&
                     <img src={selectedUser.profilePic} alt="PP" className="chat-user-profile-pic" style={onlineUser.includes(selectedUser?._id) ?
                         { border: "3px solid #21e666ff" }
-                        : {}} onClick={() => navigate(`/profile/${selectedUser?._id}`)}/>}
+                        : {}} onClick={() => navigate(`/profile/${selectedUser?._id}`)} />}
                 {!selectedUser?.profilePic &&
                     <div className="chat-user-profile-pic" style={onlineUser.includes(selectedUser?._id) ?
                         { border: "3px solid #21e666ff" }

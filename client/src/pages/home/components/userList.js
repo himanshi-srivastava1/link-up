@@ -91,9 +91,26 @@ function UsersList({ searchKey, socket, onlineUser }) {
                 dispatch(setAllChats(updatedChats));
             }
         };
+        const handleMessageDeleted = (data) => {
+            if (data.wasUnread) {
+                const allChats = store.getState().userReducer.allChats;
+                const updatedChats = allChats.map(chat => {
+                    if (chat._id === data.chatId) {
+                        return {
+                            ...chat,
+                            unreadMessageCount: Math.max((chat.unreadMessageCount || 0) - 1, 0)
+                        };
+                    }
+                    return chat;
+                });
+                dispatch(setAllChats(updatedChats));
+            }
+        };
         socket.on('receive-message', handleReceiveMessage);
+        socket.on('message-deleted-update', handleMessageDeleted);
         return () => {
             socket.off('receive-message', handleReceiveMessage);
+            socket.off('message-deleted-update', handleMessageDeleted);
         };
     }, [socket, dispatch])
     const getUnreadMessageCount = (userId) => {

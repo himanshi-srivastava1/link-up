@@ -590,7 +590,7 @@ i {
 .send-message-input {
   position: fixed;
   bottom: 20px;
-  width: 87%;
+  width: 87.3%;
   height: 40px;
   padding: 10px 20px;
   border: none;
@@ -652,18 +652,19 @@ i {
 
 }
 
-.material-symbols-outlined{
+.material-symbols-outlined {
   position: fixed;
   bottom: 20px;
-  right: 145px;
-  font-size:40px;
+  right: 142px;
+  font-size: 40px;
   color: #0d0d30;
   cursor: pointer;
   background-color: white;
   border: none;
-  margin:0;
-  padding:0;
+  margin: 0;
+  padding: 0;
 }
+
 .emoji-picker {
   position: fixed;
   bottom: 70px;
@@ -977,32 +978,33 @@ input[type="file"]::file-selector-button:hover {
 
 
 .gif-picker-container {
-    position: absolute;
-    bottom: 80px;
-    height:400px;
-    right: 20px;
-    z-index: 1000;
+  position: absolute;
+  bottom: 80px;
+  height: 400px;
+  right: 20px;
+  z-index: 1000;
 }
 
 .giphy-wrapper {
-    background: rgba(255, 255, 255, 0.1) !important;
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 15px;
-    padding: 10px;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  padding: 10px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 }
 
 
 .giphy-wrapper input {
-    background: rgba(0, 0, 0, 0.2) !important;
-    color: white !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 8px !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
 }
-.send-gif-btn{
-   margin-left: 10px;
-   cursor: pointer;
-   border: none;
-   background-color: none;
+
+.send-gif-btn {
+  margin-left: 10px;
+  cursor: pointer;
+  border: none;
+  background-color: none;
 }

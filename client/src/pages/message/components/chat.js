@@ -1,4 +1,4 @@
-import { createNewMessage, getAllMessages } from "../../../apicalls/message";
+import { createNewMessage, getAllMessages, deleteMessage } from "../../../apicalls/message";
 import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
 import { clearUnreadMessageCount } from "../../../apicalls/chat";
@@ -15,6 +15,7 @@ function ChatArea({ socket }) {
     const { user, allChats } = useSelector(state => state.userReducer);
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
     const { id } = useParams();
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -33,11 +34,7 @@ function ChatArea({ socket }) {
             if (chatToRestore) {
                 dispatch(setSelectedChat(chatToRestore));
             } else {
-                // Instead of immediately kicking the user to the home screen, 
-                // we'll wait or gently guide them.
                 console.error("Chat ID not found in allChats:", id);
-                // toast.error("Invalid chat");
-                // navigate("/");
             }
         }
     }, [id, allChats, navigate, dispatch]);
@@ -46,30 +43,73 @@ function ChatArea({ socket }) {
     const [allMessages, setAllMessages] = useState([]);
 
     const sendMessage = async (image) => {
+        let loadingId;
         try {
+            if (!message.trim() && typeof image !== 'string') return;
+            if (typeof image === 'string') {
+                loadingId = toast.loading("Sending image...");
+            }
+
             const newMessage = {
                 chatId: id,
                 sender: user._id,
                 text: message,
                 image: typeof image === 'string' ? image : ''
             }
-            socket.emit('send-message', {
-                ...newMessage,
-                members: selectedChat.members.map(m => m._id),
-                createdAt: new Date().toISOString(),
-                read: false,
-            })
             const response = await createNewMessage(newMessage);
+            if (loadingId) toast.dismiss(loadingId);
             if (response.success) {
+                socket.emit('send-message', {
+                    ...response.data,
+                    members: selectedChat.members.map(m => m._id),
+                    read: false,
+                })
                 setMessage('');
                 setShowEmojiPicker(false);
                 setShowGifPicker(false);
+                setShowAttachmentMenu(false);
             }
             else {
                 toast.error(response.message);
             };
         }
         catch (err) {
+            if (loadingId) toast.dismiss(loadingId);
+            toast.error(err.message);
+        };
+    }
+    const sendVideoMessage = async (videoBase64) => {
+        let loadingId;
+        try {
+            if (!message.trim() && !videoBase64) return;
+            loadingId = toast.loading("Uploading and sending video...");
+
+            const newMessage = {
+                chatId: id,
+                sender: user._id,
+                text: message,
+                image: '',
+                video: videoBase64
+            }
+            const response = await createNewMessage(newMessage);
+            toast.dismiss(loadingId);
+            if (response.success) {
+                socket.emit('send-message', {
+                    ...response.data,
+                    members: selectedChat.members.map(m => m._id),
+                    read: false,
+                })
+                setMessage('');
+                setShowEmojiPicker(false);
+                setShowGifPicker(false);
+                setShowAttachmentMenu(false);
+            }
+            else {
+                toast.error(response.message);
+            };
+        }
+        catch (err) {
+            if (loadingId) toast.dismiss(loadingId);
             toast.error(err.message);
         };
     }
@@ -84,6 +124,26 @@ function ChatArea({ socket }) {
         catch (err) {
             toast.error(err.message);
         };
+    }
+
+    const handleDeleteMessage = async (messageId) => {
+        try {
+            const response = await deleteMessage(messageId);
+            if (response.success) {
+                const deletedMsg = response.data;
+                setAllMessages(prev => prev.filter(msg => msg._id !== messageId));
+                socket.emit('delete-message', {
+                    chatId: id,
+                    messageId: messageId,
+                    wasUnread: !deletedMsg.read,
+                    members: selectedChat.members.map(m => m._id)
+                });
+            } else {
+                toast.error(response.message);
+            }
+        } catch (err) {
+            toast.error(err.message);
+        }
     }
 
     const clearUnreadMessages = async () => {
@@ -143,11 +203,19 @@ function ChatArea({ socket }) {
                 }
             };
 
+            const handleMessageDeleted = (data) => {
+                if (data.chatId === id) {
+                    setAllMessages(prev => prev.filter(msg => msg._id !== data.messageId));
+                }
+            };
+
             socket.on('receive-message', handleReceiveMessage);
             socket.on('messages-read-update', handleMessagesRead);
+            socket.on('message-deleted-update', handleMessageDeleted);
             return () => {
                 socket.off('receive-message', handleReceiveMessage);
                 socket.off('messages-read-update', handleMessagesRead);
+                socket.off('message-deleted-update', handleMessageDeleted);
             };
         }
     }, [selectedChat, id, socket, user._id])
@@ -162,13 +230,31 @@ function ChatArea({ socket }) {
 
     const sendImage = async (e) => {
         const file = e.target.files[0];
+        if (!file) return;
+        setShowAttachmentMenu(false);
         const reader = new FileReader(file);
         reader.readAsDataURL(file);
         reader.onloadend = async () => {
-            sendMessage(reader.result);
+            await sendMessage(reader.result);
+            e.target.value = null;
         }
     }
-
+    const sendVideo = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setShowAttachmentMenu(false);
+        if (file.size > 25000000) {
+            toast.error("Video must be less than 25MB"); 
+            e.target.value = null;
+            return;
+        }
+        const reader = new FileReader(file);
+        reader.readAsDataURL(file);
+        reader.onloadend = async () => {
+            await sendVideoMessage(reader.result);
+            e.target.value = null;
+        }
+    }
     const handleGifSelect = (gifUrl) => {
         sendMessage(gifUrl);
     }
@@ -184,28 +270,60 @@ function ChatArea({ socket }) {
                                 return <div key={index} className="message-container">
                                     <div className={isMessageSender ? "send-message" : "received-message"}>
                                         <div>{msg.text}</div>
-                                        <div>{msg.image && <img src={msg.image} alt="content" style={{maxHeight: '200px', maxWidth: '100%', borderRadius: '8px'}} />}</div>
+                                        <div>{msg.image && <img src={msg.image} alt="content" style={{ maxHeight: '200px', maxWidth: '100%', borderRadius: '8px' }} />}</div>
+                                        <div>{msg.video && (<video src={msg.video} controls style={{ maxHeight: '200px', maxWidth: '300px', borderRadius: '8px' }} />)}</div>
                                     </div>
                                     <div className={isMessageSender ? "message-info-sender" : "message-info"}>
                                         <div className={isMessageSender ? "message-timestamp-sender" : "message-timestamp"}>
                                             {formatTime(msg.createdAt)}
                                         </div>
+                                        {isMessageSender && (
+                                            <i 
+                                                className="fa-solid fa-trash" 
+                                                style={{ cursor: 'pointer', marginRight: '5px', fontSize: '11px', color: '#ffb3b3' }} 
+                                                onClick={() => handleDeleteMessage(msg._id)}
+                                            ></i>
+                                        )}
                                         <div className="message-icon-sender">{isMessageSender && !msg.read && <i className="fa-solid fa-check "></i>}</div>
                                         <div className="message-icon-sender">{isMessageSender && msg.read && <i className="fa-solid fa-check-double "></i>}</div>
                                     </div>
                                 </div>
                             })}
                         </div>
-                        {showEmojiPicker && 
-                            <div style={{position: 'absolute', bottom: '70px', right: '20px', zIndex: 100}}>
-                                <EmojiPicker className="emoji-picker"
+                        {showEmojiPicker &&
+                            <div style={{ 
+                                position: 'absolute', 
+                                bottom: '70px', 
+                                right: '20px', 
+                                zIndex: 1000,
+                                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+                                borderRadius: '15px',
+                                overflow: 'hidden'
+                            }}>
+                                <EmojiPicker
+                                    width={300}
+                                    height={450}
                                     onEmojiClick={(e) => {
                                         setMessage((prev) => prev + e.emoji);
                                     }} />
                             </div>
                         }
-                        {showGifPicker && 
+                        {showGifPicker &&
                             <GifPicker onSelect={handleGifSelect} />
+                        }
+                        {showAttachmentMenu &&
+                            <div style={{ position: 'absolute', bottom: '70px', right: '110px', zIndex: 100, backgroundColor: 'rgba(255, 255, 255, 0.9)', padding: '15px', borderRadius: '15px', display: 'flex', flexDirection: 'column', gap: '15px', color: '#000', boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)' }}>
+                                <label htmlFor='file' style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '500', padding: '5px' }}>
+                                    <i className="fa-solid fa-image" style={{ fontSize: '20px', color: '#007bff' }}></i>Photo
+                                </label>
+                                <input type='file' id='file' style={{ display: "none" }}
+                                    accept="image/jpg, image/jpeg, image/gif, image/png" onChange={sendImage}></input>
+                                <label htmlFor='video-file' style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '500', padding: '5px' }}>
+                                    <i className="fa-solid fa-video" style={{ fontSize: '20px', color: '#ff3b3b' }}></i> Video
+                                </label>
+                                <input type='file' id='video-file' style={{ display: 'none' }}
+                                    accept="video/mp4, video/webm, video/ogg" onChange={sendVideo}></input>
+                            </div>
                         }
                     </div>
                     <div className="send-message-div">
@@ -224,23 +342,33 @@ function ChatArea({ socket }) {
                                 }
                             }} />
                     </div>
-                    <label htmlFor='file' className="send-image-btn"><i className="fa-solid fa-camera"></i></label>
-                    <input type='file' id='file' style={{ display: 'none' }}
-                        accept="image/jpg, image/jpeg, image/gif, image/png" onChange={sendImage}></input>
+
+                    <button
+                        className="send-image-btn"
+                        onClick={() => {
+                            setShowAttachmentMenu(!showAttachmentMenu);
+                            setShowGifPicker(false);
+                            setShowEmojiPicker(false);
+                        }}
+                    >
+                        <i className="fa-solid fa-paperclip"></i>
+                    </button>
+
                     <button
                         className="send-gif-btn"
                         onClick={() => {
                             setShowGifPicker(!showGifPicker);
                             setShowEmojiPicker(false);
+                            setShowAttachmentMenu(false);
                         }}
                     ><span className="material-symbols-outlined">
                             gif
                         </span></button>
                     <button className="fa fa-smile-o send-emoji-btn" aria-hidden="true"
-                        onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}></button>
+                        onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); setShowAttachmentMenu(false); }}></button>
                     <button className="fa fa-paper-plane send-message-btn" aria-hidden="true"
                         onClick={() => sendMessage()}></button>
-                </div>
+                </div >
             }
         </>
     );
