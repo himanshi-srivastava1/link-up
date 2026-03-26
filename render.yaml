@@ -1,0 +1,52 @@
+services:
+  # Web Service for Backend
+  - type: web
+    name: linkup-server
+    env: node
+    rootDir: server
+    buildCommand: "npm install"
+    startCommand: "node server.js"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CONN_STRING
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        value: dcqsl3cot
+      - key: CLOUDINARY_API_KEY
+        value: 767388277448684
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  # Web Service for Frontend
+  - type: web
+    name: linkup-client
+    env: static
+    rootDir: client
+    buildCommand: "npm run build"
+    staticPublishPath: ./build
+    envVars:
+      - key: REACT_APP_API_URL
+        sync: false
+      - key: REACT_APP_TENOR_API_KEY
+        value: 0dtW5PeaT3vowQGxyJ5SPV3DvfazeLzU
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://linkup-server.onrender.com/api/*
+      - type: rewrite
+        source: /socket.io/*
+        destination: https://linkup-server.onrender.com/socket.io/*
+      - type: file
+        source: /**
+        destination: /index.html

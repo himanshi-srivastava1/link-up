@@ -5,18 +5,27 @@ const authRouter = require('./routes/authRoutes.js');
 const userRouter = require('./routes/userRoutes.js');
 const chatRouter = require('./routes/chatRoutes.js');
 const messageRouter = require('./routes/messageRoutes.js');
-const User = require('./models/user.js')
-app.use(cors());
+const User = require('./models/user.js');
+
+// CORS configuration
+app.use(cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+    allowedHeaders: ["Authorization", "Content-Type"]
+}));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
 const server = require('http').createServer(app);
 const io = require('socket.io')(server, {
     cors: {
-        origin: "http://localhost:3001",
-        methods: ['GET', 'POST']
+        origin: process.env.FRONTEND_URL || "http://localhost:3000",
+        methods: ['GET', 'POST'],
+        credentials: true
     },
     allowEIO3: true
-
 });
 app.use('/api/auth', authRouter);
 app.use('/api/user', userRouter);

@@ -1,7 +1,14 @@
 import axios from "axios";
-export const url="http://localhost:3001";
+export const url=process.env.REACT_APP_API_URL || "http://localhost:3001";
 export const axiosInstance=axios.create({
-    headers:{
-        authorization:`Bearer ${localStorage.getItem('token')}`
+    baseURL: url,
+});
+
+// Add request interceptor to include token
+axiosInstance.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.authorization = `Bearer ${token}`;
     }
+    return config;
 });

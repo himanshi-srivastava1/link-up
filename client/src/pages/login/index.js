@@ -29,6 +29,7 @@ function Login() {
             }
         }
         catch (err) {
+            dispatch(hideLoader());
             console.log(err);
             toast.error(err.message);
         };

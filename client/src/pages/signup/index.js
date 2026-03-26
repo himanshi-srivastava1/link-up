@@ -27,6 +27,7 @@ function Signup() {
                 toast.success(response.message);
                 setStep(2);
             } else {
+                dispatch(hideLoader());
                 toast.error(response.message);
             }
         } catch (error) {
@@ -46,6 +47,7 @@ function Signup() {
                 navigate("/login");
             }
             else {
+                dispatch(hideLoader());
                 toast.error(response.message);
             }
         }
