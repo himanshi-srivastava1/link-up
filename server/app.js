@@ -8,8 +8,14 @@ const messageRouter = require('./routes/messageRoutes.js');
 const User = require('./models/user.js');
 
 // CORS configuration
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    "http://localhost:3000",
+    "http://localhost:3001"
+].filter(Boolean);
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
     allowedHeaders: ["Authorization", "Content-Type"]
@@ -21,7 +27,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 const server = require('http').createServer(app);
 const io = require('socket.io')(server, {
     cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
+        origin: allowedOrigins,
         methods: ['GET', 'POST'],
         credentials: true
     },

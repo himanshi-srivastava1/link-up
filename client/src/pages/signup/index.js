@@ -22,14 +22,13 @@ function Signup() {
         try {
             dispatch(showLoader());
             const response = await sendOtpApiSignUp(user.email);
-            dispatch(hideLoader());
             if (response.success) {
                 toast.success(response.message);
                 setStep(2);
             } else {
-                dispatch(hideLoader());
                 toast.error(response.message);
             }
+            dispatch(hideLoader());
         } catch (error) {
             dispatch(hideLoader());
             toast.error(error.message);
@@ -41,18 +40,16 @@ function Signup() {
         try {
             dispatch(showLoader());
             response = await signupuser(user);
-            dispatch(hideLoader());
             if (response.success) {
                 toast.success(response.message);
                 navigate("/login");
             }
             else {
-                dispatch(hideLoader());
                 toast.error(response.message);
             }
+            dispatch(hideLoader());
         }
         catch (err) {
-            dispatch(hideLoader());
             console.log(err);
             toast.error(err.message);
         };
