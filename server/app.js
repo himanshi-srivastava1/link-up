@@ -15,18 +15,12 @@ const chatRouter = require('./routes/chatRoutes.js');
 const messageRouter = require('./routes/messageRoutes.js');
 const healthRouter = require('./routes/health');
 const debugRouter = require('./routes/debug');
-const User = require('./models/user.js');
 const errorHandler = require('./middleware/errorHandler');
 
 
 app.use(corsMiddleware);
 
 
-if (process.env.NODE_ENV === 'development') {
-    console.log('🌐 CORS Configuration:');
-    console.log('Allowed origins:', getAllowedOrigins());
-    console.log('Environment:', process.env.NODE_ENV || 'development');
-}
 
 
 app.use(express.json({ limit: '50mb' }));
@@ -49,19 +43,19 @@ app.use(errorHandler);
 
 const path = require("path");
 
-if (process.env.NODE_ENV === "production") {
-
+// Only serve static files if we're in a monolith deployment (not separate frontend)
+if (process.env.NODE_ENV === "production" && process.env.SERVE_FRONTEND === "true") {
     app.use(express.static(path.join(__dirname, "../client/build")));
 
-
-    app.get("*", (req, res) => {
+    // Handle React routing, return all requests to React app
+    app.get(/^(?!\/api).*/, (req, res) => {
         res.sendFile(path.resolve(__dirname, "../client/build", "index.html"));
     });
 } else {
+    // API-only deployment
     app.get("/", (req, res) => {
-        res.send("API is running...");
+        res.send("LinkUp API is running... 🚀");
     });
-
 }
 const server = require('http').createServer(app);
 

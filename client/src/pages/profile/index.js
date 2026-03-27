@@ -7,33 +7,27 @@ import { uploadProfilePic } from "../../apicalls/users.js";
 import { useChatContext } from "../../context/ChatContext";
 import { resendEmailVerification } from "../../apicalls/auth.js";
 import { io } from "socket.io-client";
-import Loader from "../../components/loader";
 
 function Profile() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [image, setImage] = useState('');
     const [filename, setFilename] = useState('No file chosen');
-    const { allUsers, allChats, user, setUser, setLoading } = useChatContext();
+    const { allUsers, user, setUser, setLoading } = useChatContext();
     
+    // Quick ID match without extensive logging
     let user1 = null;
-    if (String(id) === String(user?._id) || String(id) === String(user?.id)) {
+    
+    // Direct comparison - avoid timeouts
+    if (user && (id === user._id || id === user.id)) {
         user1 = user;
-    } else {
-        user1 = allUsers?.find(u => String(u._id) === String(id) || String(u.id) === String(id));
-        if (!user1 && allChats) {
-            for (let chat of allChats) {
-                const member = chat.members?.find(m => String(m._id) === String(id) || String(m.id) === String(id));
-                if (member) {
-                    user1 = member;
-                    break;
-                }
-            }
-        }
+    } else if (allUsers && allUsers.length > 0) {
+        user1 = allUsers.find(u => u._id === id || u.id === id);
     }
-
+    
+    // Set image immediately
     useEffect(() => {
-        if (user1 && user1.profilePic) {
+        if (user1?.profilePic) {
             setImage(user1.profilePic);
         } else {
             setImage('');
@@ -43,21 +37,33 @@ function Profile() {
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        if (user) {
+        if (user && user1) {
             const socketUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
             const newSocket = io(socketUrl, {
                 transports: ["websocket", "polling"],
                 auth: {
                     token: localStorage.getItem('token')
-                }
+                },
+                withCredentials: true,
+                forceNew: true
             });
 
             newSocket.emit('join-room', user._id || user.id);
             newSocket.emit('user-login', user._id || user.id);
 
+            newSocket.on('user-typing', (data) => {
+                console.log('User is typing:', data);
+            });
+
+            newSocket.on('user-stop-typing', (data) => {
+                console.log('User stopped typing:', data);
+            });
+
             setSocket(newSocket);
 
             return () => {
+                newSocket.off('user-typing');
+                newSocket.off('user-stop-typing');
                 newSocket.close();
             };
         }
@@ -65,27 +71,19 @@ function Profile() {
 
     if (!user1 || !user || !socket) {
         return (
-            <div className="home-page">
-                <Loader />
+            <div className="profile-page">
+                <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    height: '100vh',
+                    fontSize: '18px',
+                    color: '#666'
+                }}>
+                    Loading profile...
+                </div>
             </div>
         );
-    }
-
-    const handleResendVerification = async () => {
-        try {
-            setLoading(true);
-            const response = await resendEmailVerification(user.email);
-            
-            if (response.success) {
-                toast.success(response.message);
-            } else {
-                toast.error(response.message);
-            }
-        } catch (error) {
-            toast.error(error.message || 'Failed to resend verification email');
-        } finally {
-            setLoading(false);
-        }
     };
 
     function getfullname() {
@@ -132,6 +130,23 @@ function Profile() {
             }
         } catch (err) {
             toast.error(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResendVerification = async () => {
+        try {
+            setLoading(true);
+            const response = await resendEmailVerification(user.email);
+            
+            if (response.success) {
+                toast.success(response.message);
+            } else {
+                toast.error(response.message);
+            }
+        } catch (error) {
+            toast.error(error.message || 'Failed to resend verification email');
         } finally {
             setLoading(false);
         }

@@ -181,7 +181,7 @@ function UsersList({ searchKey, socket, onlineUser }) {
     useEffect(() => {
         let timers = {};
         const handleTyping = (data) => {
-            if (user.id !== data.sender) {
+            if (user.id !== data.user?.id) {
                 const chat_id = data.chatId;
                 setTypingUsers((prev) => ({
                     ...prev,
@@ -200,9 +200,25 @@ function UsersList({ searchKey, socket, onlineUser }) {
                 }, 1600);
             }
         }
-        socket.on('started-typing', handleTyping);
+        const handleStopTyping = (data) => {
+            if (user.id !== data.user?.id) {
+                const chat_id = data.chatId;
+                if (timers[chat_id]) {
+                    clearTimeout(timers[chat_id]);
+                    delete timers[chat_id];
+                }
+                setTypingUsers((prev) => {
+                    const newState = { ...prev };
+                    delete newState[chat_id];
+                    return newState;
+                });
+            }
+        }
+        socket.on('user-typing', handleTyping);
+        socket.on('user-stop-typing', handleStopTyping);
         return () => {
-            socket.off('started-typing', handleTyping);
+            socket.off('user-typing', handleTyping);
+            socket.off('user-stop-typing', handleStopTyping);
             Object.values(timers).forEach(timer => clearTimeout(timer));
         };
     }, [socket, user.id])
@@ -238,7 +254,7 @@ function UsersList({ searchKey, socket, onlineUser }) {
                                         <div className="filter-user-details">
                                             <div className="user-display-name">{formatName(displayUser)}</div>
                                             {
-                                                typingUsers[currentChatId] && <div className="typing-indicator"><i>typing...</i></div>
+                                                typingUsers[currentChatId] && <div className="typing-indicator"><i><em>{formatName(displayUser)} is typing...</em></i></div>
                                             }
                                             {
                                                 !typingUsers[currentChatId] && <div className="user-display-email">{getLastMessage(displayUser._id) || displayUser.email}</div>

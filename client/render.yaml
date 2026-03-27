@@ -1,0 +1,11 @@
+services:
+  # Frontend Static Site
+  - type: web
+    name: linkup-frontend
+    env: static
+    buildCommand: cd .. && npm install && npm run build
+    staticPublishPath: ./client/build
+    routes:
+      - src: /(.*)
+        dest: /index.html
+        status: 200

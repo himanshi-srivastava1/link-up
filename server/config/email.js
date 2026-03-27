@@ -9,9 +9,12 @@ const nodemailer = require('nodemailer');
 
 class EmailService {
     constructor() {
+        console.log('🚀 EmailService constructor called');
         this.transporter = null;
         this.isConfigured = false;
+        console.log('🚀 About to initialize transporter...');
         this.initializeTransporter();
+        console.log('🚀 EmailService constructor completed');
     }
 
     /**
@@ -20,30 +23,43 @@ class EmailService {
     initializeTransporter() {
         try {
             // Check if email credentials are configured
+            console.log('🔍 Checking email configuration...');
+            console.log('📧 EMAIL_USER exists:', !!process.env.EMAIL_USER);
+            console.log('🔑 EMAIL_PASS exists:', !!process.env.EMAIL_PASS);
+            console.log('📧 EMAIL_USER value:', process.env.EMAIL_USER);
+            console.log('🔑 EMAIL_PASS length:', process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0);
+
             if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
                 console.log('⚠️ Email credentials not configured. Email sending disabled.');
                 return;
             }
 
-            // Create transporter with Gmail
             this.transporter = nodemailer.createTransport({
-                service: 'gmail',
+                host: 'smtp.gmail.com',
+                port: 587,
+                secure: false,
                 auth: {
                     user: process.env.EMAIL_USER,
                     pass: process.env.EMAIL_PASS
                 },
                 tls: {
+                    ciphers: 'SSLv3',
                     rejectUnauthorized: false
-                }
+                },
+                pool: true,
+                maxConnections: 1,
+                maxMessages: 5
             });
 
             // Verify transporter configuration
             this.transporter.verify((error, success) => {
                 if (error) {
-                    console.error('❌ Email transporter verification failed:', error);
+                    console.error('❌ Email transporter verification failed:', error.message);
+                    console.error('❌ Full error details:', error);
                     this.isConfigured = false;
                 } else {
                     console.log('✅ Email transporter ready');
+                    console.log('📧 Email user:', process.env.EMAIL_USER);
                     this.isConfigured = true;
                 }
             });
@@ -58,14 +74,26 @@ class EmailService {
      * Send email verification email
      */
     async sendVerificationEmail(email, verificationToken) {
+        console.log('🔍 sendVerificationEmail called');
+        console.log('📧 isConfigured value:', this.isConfigured);
+        console.log('📧 transporter exists:', !!this.transporter);
+
         if (!this.isConfigured) {
             console.log('📧 Email not configured - skipping verification email');
+            console.log('📧 Attempting to re-initialize email service...');
+            this.initializeTransporter();
+
+            // Wait a moment and check again
+            setTimeout(() => {
+                console.log('📧 After re-init, isConfigured:', this.isConfigured);
+            }, 1000);
+
             return { success: false, message: 'Email service not configured' };
         }
 
         try {
-            const verificationUrl = `http://localhost:3000/verify-email/${verificationToken}`;
-            
+            const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+
             const mailOptions = {
                 from: `"LinkUp" <${process.env.EMAIL_USER}>`,
                 to: email,
@@ -75,11 +103,11 @@ class EmailService {
 
             const info = await this.transporter.sendMail(mailOptions);
             console.log(`📧 Verification email sent to ${email}:`, info.messageId);
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 messageId: info.messageId,
-                message: 'Verification email sent successfully' 
+                message: 'Verification email sent successfully'
             };
 
         } catch (error) {
@@ -98,8 +126,8 @@ class EmailService {
         }
 
         try {
-            const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
-            
+            const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
             const mailOptions = {
                 from: `"LinkUp" <${process.env.EMAIL_USER}>`,
                 to: email,
@@ -109,11 +137,11 @@ class EmailService {
 
             const info = await this.transporter.sendMail(mailOptions);
             console.log(`📧 Password reset email sent to ${email}:`, info.messageId);
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 messageId: info.messageId,
-                message: 'Password reset email sent successfully' 
+                message: 'Password reset email sent successfully'
             };
 
         } catch (error) {
@@ -141,11 +169,11 @@ class EmailService {
 
             const info = await this.transporter.sendMail(mailOptions);
             console.log(`📧 Welcome email sent to ${email}:`, info.messageId);
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 messageId: info.messageId,
-                message: 'Welcome email sent successfully' 
+                message: 'Welcome email sent successfully'
             };
 
         } catch (error) {
@@ -287,7 +315,7 @@ class EmailService {
                         <li>Stay in touch with loved ones</li>
                     </ul>
                     <div style="text-align: center;">
-                        <a href="http://localhost:3000/login" class="button" style="color: #ffffff;">Get Started</a>
+                        <a href="${process.env.FRONTEND_URL}/login" class="button" style="color: #ffffff;">Get Started</a>
                     </div>
                     <p>If you have any questions, feel free to reach out to our support team.</p>
                     <p>Happy connecting!</p>

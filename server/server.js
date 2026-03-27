@@ -1,9 +1,13 @@
 const dotenv = require("dotenv");
-dotenv.config({ path: './.env' });
+
+// Load environment variables based on NODE_ENV
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
+dotenv.config({ path: `./${envFile}` });
+
 const { server } = require('./app.js');
 
-// Use port 3002 to avoid conflicts
-const port = 3002;
+// Use port from environment or default to 3001 for production
+const port = process.env.PORT || (process.env.NODE_ENV === 'production' ? 3001 : 3002);
 
 server.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);

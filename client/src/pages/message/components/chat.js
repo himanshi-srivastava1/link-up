@@ -37,6 +37,7 @@ function ChatArea({ socket }) {
 
     const [message, setMessage] = useState('');
     const [allMessages, setAllMessages] = useState([]);
+    const [typingUser, setTypingUser] = useState(null);
 
     const sendMessage = async (image) => {
         let loadingId;
@@ -251,10 +252,26 @@ function ChatArea({ socket }) {
             socket.on('receive-message', handleReceiveMessage);
             socket.on('messages-read', handleMessagesRead);
             socket.on('message-deleted', handleMessageDeleted);
+
+            // Handle typing indicators
+            socket.on('user-typing', (data) => {
+                if (data.chatId === id && data.user.id !== user.id) {
+                    console.log(`${data.user.firstname} is typing...`);
+                    setTypingUser(data.user);
+                }
+            });
+            
+            socket.on('user-stop-typing', (data) => {
+                if (data.chatId === id && data.user.id !== user.id) {
+                    console.log(`${data.user.firstname} stopped typing`);
+                    setTypingUser(null);
+                }
+            });
+
             return () => {
                 socket.off('receive-message', handleReceiveMessage);
                 socket.off('messages-read', handleMessagesRead);
-                socket.off('message-deleted-update', handleMessageDeleted);
+                socket.off('message-deleted', handleMessageDeleted);
             };
         }
     }, [selectedChat, id, socket, user._id])
@@ -304,6 +321,20 @@ function ChatArea({ socket }) {
                 <div className="app-chat-area">
                     <div className="scrollbar-container">
                         <div className='messages-area'>
+                            {/* Typing Indicator */}
+                            {typingUser && (
+                                <div className="typing-indicator" style={{
+                                    padding: '8px 12px',
+                                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                                    borderRadius: '12px',
+                                    margin: '10px 0',
+                                    fontSize: '12px',
+                                    color: '#666',
+                                    fontStyle: 'italic'
+                                }}>
+                                    {typingUser.firstname} is typing...
+                                </div>
+                            )}
                             {allMessages.map((msg, index) => {
                                 console.log('Message debug:', {
                                     msgSenderId: msg.sender._id || msg.sender?.id || msg.sender,

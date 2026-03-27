@@ -20,7 +20,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "docker:build": "docker build -t linkup-client .",
+    "docker:run": "docker run -p 3000:80 linkup-client"
   },
   "eslintConfig": {
     "extends": [

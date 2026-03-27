@@ -1,5 +1,5 @@
 import axios from "axios";
-export const url = process.env.REACT_APP_API_URL || (window.location.hostname === "localhost" ? "http://localhost:3002" : "");
+export const url = process.env.REACT_APP_API_URL || (window.location.hostname === "localhost" ? "http://localhost:3002" : "https://linkup-chat-app-1fdh.onrender.com");
 export const axiosInstance = axios.create({
     baseURL: url,
 });

@@ -10,6 +10,10 @@ const generalLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    trustProxy: true,
+    keyGenerator: (req) => {
+        return req.ip || req.connection.remoteAddress || 'unknown';
+    }
 });
 
 // Auth-specific rate limiter (more restrictive)
@@ -22,6 +26,10 @@ const authLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    trustProxy: true,
+    keyGenerator: (req) => {
+        return req.ip || req.connection.remoteAddress || 'unknown';
+    }
 });
 
 // Password reset rate limiter
@@ -34,6 +42,10 @@ const passwordResetLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    trustProxy: true,
+    keyGenerator: (req) => {
+        return req.ip || req.connection.remoteAddress || 'unknown';
+    }
 });
 
 module.exports = {

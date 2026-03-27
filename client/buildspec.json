@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "source": "/**",
+      "destination": "/index.html"
+    }
+  ]
+}

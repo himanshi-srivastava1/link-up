@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "npm install && cd ../client && npm install && npm run build"
+    "dev": "nodemon server.js",
+    "build": "npm install && cd ../client && npm install && npm run build",
+    "build:prod": "cd ../client && npm install && npm run build",
+    "docker:build": "docker build -t linkup-server .",
+    "docker:run": "docker run -p 3001:3001 --env-file .env.production linkup-server"
   },
   "author": "Himanshi Srivastava",
   "license": "ISC",

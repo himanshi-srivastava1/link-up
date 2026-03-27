@@ -26,12 +26,12 @@ const getAllowedOrigins = () => {
             'http://localhost:3001',
             'http://127.0.0.1:3000',
             'http://127.0.0.1:3001',
-            'http://localhost:5173', // Vite default
+            'http://localhost:5173', 
             'http://127.0.0.1:5173'
         );
     }
     
-    // Staging origins
+   
     if (env === 'staging') {
         origins.push(
             'https://staging.linkup.com',
@@ -39,31 +39,31 @@ const getAllowedOrigins = () => {
         );
     }
     
-    // Production origins
     if (env === 'production') {
         origins.push(
             'https://linkup.com',
             'https://www.linkup.com',
-            'https://linkup-client.onrender.com',
-            'https://www.linkup-client.onrender.com'
+           
+            process.env.FRONTEND_URL,
+           
+            'https://*.onrender.com'
         );
     }
     
-    // Filter out any undefined/null values and remove duplicates
+    
     return [...new Set(origins.filter(Boolean))];
 };
 
-// CORS options based on environment
+
 const getCorsOptions = () => {
     const env = process.env.NODE_ENV || 'development';
     const isDevelopment = env === 'development';
     
     return {
-        // Origins
+        
         origin: (origin, callback) => {
             const allowedOrigins = getAllowedOrigins();
             
-            // Allow requests with no origin (like mobile apps or Postman)
             if (!origin) {
                 return callback(null, true);
             }
