@@ -24,12 +24,6 @@ class EmailService {
             console.log('📧 EMAIL_USER value:', process.env.EMAIL_USER);
             console.log('🔑 EMAIL_PASS length:', process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0);
 
-            // Skip email initialization in production if not working
-            if (process.env.NODE_ENV === 'production') {
-                console.log('⚠️ Email service disabled in production (Render blocks SMTP)');
-                this.isConfigured = false;
-                return;
-            }
 
             if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
                 console.log('⚠️ Email credentials not configured. Email sending disabled.');
