@@ -2,7 +2,6 @@ const express = require('express');
 const database = require('../config/database');
 const router = express.Router();
 
-// Health check endpoint
 router.get('/health', async (req, res) => {
     try {
         const dbHealth = await database.healthCheck();
@@ -29,7 +28,7 @@ router.get('/health', async (req, res) => {
     }
 });
 
-// Database health check endpoint
+
 router.get('/health/database', async (req, res) => {
     try {
         const dbHealth = await database.healthCheck();

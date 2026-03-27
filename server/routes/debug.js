@@ -2,7 +2,7 @@ const router = require("express").Router();
 const User = require('../models/user');
 const bcrypt = require('bcrypt');
 
-// Temporarily bypass email verification for testing
+
 router.post('/verify-all-users', async (req, res) => {
     try {
         await User.updateMany({}, { isEmailVerified: true });
@@ -12,27 +12,27 @@ router.post('/verify-all-users', async (req, res) => {
     }
 });
 
-// Create test user
+
 router.post('/create-test-user', async (req, res) => {
     try {
         const { firstname, lastname, email, password } = req.body;
         
-        // Check if user exists
+    
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.json({ success: false, message: 'User already exists' });
         }
 
-        // Hash password
+        
         const hashedPassword = await bcrypt.hash(password, 12);
 
-        // Create user (bypass email verification)
+        
         const newUser = new User({
             firstname,
             lastname,
             email,
             password: hashedPassword,
-            isEmailVerified: true // Skip email verification for testing
+            isEmailVerified: true 
         });
 
         await newUser.save();
@@ -52,7 +52,7 @@ router.post('/create-test-user', async (req, res) => {
     }
 });
 
-// List all users
+
 router.get('/list-users', async (req, res) => {
     try {
         const users = await User.find({})

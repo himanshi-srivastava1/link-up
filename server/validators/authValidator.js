@@ -1,6 +1,5 @@
 const { body, param, validationResult } = require('express-validator');
 
-// Handle validation errors
 const handleValidationErrors = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -17,7 +16,6 @@ const handleValidationErrors = (req, res, next) => {
     next();
 };
 
-// Registration validation
 const validateRegistration = [
     body('firstname')
         .trim()
@@ -48,7 +46,6 @@ const validateRegistration = [
     handleValidationErrors
 ];
 
-// Login validation
 const validateLogin = [
     body('email')
         .trim()
@@ -63,7 +60,6 @@ const validateLogin = [
     handleValidationErrors
 ];
 
-// Change password validation
 const validateChangePassword = [
     body('currentPassword')
         .notEmpty()
@@ -86,7 +82,7 @@ const validateChangePassword = [
     handleValidationErrors
 ];
 
-// Forgot password validation
+
 const validateForgotPassword = [
     body('email')
         .trim()
@@ -97,7 +93,7 @@ const validateForgotPassword = [
     handleValidationErrors
 ];
 
-// Reset password validation
+
 const validateResetPassword = [
     body('password')
         .isLength({ min: 8, max: 128 })
@@ -108,7 +104,7 @@ const validateResetPassword = [
     handleValidationErrors
 ];
 
-// Token validation for params
+
 const validateToken = [
     param('token')
         .isLength({ min: 32, max: 128 })  // ✅ Accept 32-128 character tokens
@@ -117,7 +113,7 @@ const validateToken = [
     handleValidationErrors
 ];
 
-// Email verification resend validation
+
 const validateResendVerification = [
     body('email')
         .trim()
@@ -135,6 +131,5 @@ module.exports = {
     validateForgotPassword,
     validateResetPassword,
     validateToken,
-    validateResendVerification,
     handleValidationErrors
 };
