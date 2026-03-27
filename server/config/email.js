@@ -1,95 +1,62 @@
 
-
 const nodemailer = require('nodemailer');
 
 class EmailService {
     constructor() {
-        console.log('🚀 EmailService constructor called');
         this.transporter = null;
         this.isConfigured = false;
-        console.log('🚀 About to initialize transporter...');
         this.initializeTransporter();
-        console.log('🚀 EmailService constructor completed');
     }
 
-    /**
-     * Initialize Nodemailer transporter
-     */
-    initializeTransporter() {
+    async initializeTransporter() {
         try {
-            // Check if email credentials are configured
-            console.log('🔍 Checking email configuration...');
-            console.log('📧 EMAIL_USER exists:', !!process.env.EMAIL_USER);
-            console.log('🔑 EMAIL_PASS exists:', !!process.env.EMAIL_PASS);
-            console.log('📧 EMAIL_USER value:', process.env.EMAIL_USER);
-            console.log('🔑 EMAIL_PASS length:', process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0);
-
-
             if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-                console.log('⚠️ Email credentials not configured. Email sending disabled.');
-                return;
+                console.log('⚠️ Email credentials not configured.');
+                return false;
             }
 
             this.transporter = nodemailer.createTransport({
                 host: 'smtp.gmail.com',
-                port: 587,
-                secure: false,
+                port: 465, 
+                secure: true,
                 auth: {
                     user: process.env.EMAIL_USER,
                     pass: process.env.EMAIL_PASS
                 },
                 tls: {
-                    ciphers: 'SSLv3',
+                    servername: 'smtp.gmail.com', 
                     rejectUnauthorized: false
-                },
-                pool: true,
-                maxConnections: 1,
-                maxMessages: 5
-            });
-
-            // Verify transporter configuration
-            this.transporter.verify((error, success) => {
-                if (error) {
-                    console.error('❌ Email transporter verification failed:', error.message);
-                    console.error('❌ Full error details:', error);
-                    this.isConfigured = false;
-                } else {
-                    console.log('✅ Email transporter ready');
-                    console.log('📧 Email user:', process.env.EMAIL_USER);
-                    this.isConfigured = true;
                 }
             });
 
+            
+            await new Promise((resolve, reject) => {
+                this.transporter.verify((error, success) => {
+                    if (error) reject(error);
+                    else resolve(success);
+                });
+            });
+
+            this.isConfigured = true;
+            console.log('✅ Email transporter ready');
+            return true;
         } catch (error) {
-            console.error('❌ Failed to initialize email transporter:', error);
+            console.error('❌ Email initialization failed:', error.message);
             this.isConfigured = false;
+            return false;
         }
     }
 
-    /**
-     * Send email verification email
-     */
     async sendVerificationEmail(email, verificationToken) {
-        console.log('🔍 sendVerificationEmail called');
-        console.log('📧 isConfigured value:', this.isConfigured);
-        console.log('📧 transporter exists:', !!this.transporter);
-
+        // If not configured, try to initialize and WAIT for it
         if (!this.isConfigured) {
-            console.log('📧 Email not configured - skipping verification email');
-            console.log('📧 Attempting to re-initialize email service...');
-            this.initializeTransporter();
-
-            // Wait a moment and check again
-            setTimeout(() => {
-                console.log('📧 After re-init, isConfigured:', this.isConfigured);
-            }, 1000);
-
-            return { success: false, message: 'Email service not configured' };
+            console.log('📧 Attempting to initialize service...');
+            const ready = await this.initializeTransporter();
+            if (!ready) return { success: false, message: 'Email service unavailable' };
         }
 
         try {
             const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
-
             const mailOptions = {
                 from: `"LinkUp" <${process.env.EMAIL_USER}>`,
                 to: email,
@@ -98,57 +65,13 @@ class EmailService {
             };
 
             const info = await this.transporter.sendMail(mailOptions);
-            console.log(`📧 Verification email sent to ${email}:`, info.messageId);
-
-            return {
-                success: true,
-                messageId: info.messageId,
-                message: 'Verification email sent successfully'
-            };
-
+            return { success: true, messageId: info.messageId };
         } catch (error) {
-            console.error('❌ Failed to send verification email:', error);
-            return { success: false, message: 'Failed to send verification email' };
+            console.error('❌ Failed to send email:', error.message);
+            return { success: false, message: error.message };
         }
     }
 
-    /**
-     * Send password reset email
-     */
-    async sendPasswordResetEmail(email, resetToken) {
-        if (!this.isConfigured) {
-            console.log('📧 Email not configured - skipping password reset email');
-            return { success: false, message: 'Email service not configured' };
-        }
-
-        try {
-            const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-
-            const mailOptions = {
-                from: `"LinkUp" <${process.env.EMAIL_USER}>`,
-                to: email,
-                subject: 'Reset Your Password - LinkUp',
-                html: this.getPasswordResetEmailTemplate(email, resetUrl)
-            };
-
-            const info = await this.transporter.sendMail(mailOptions);
-            console.log(`📧 Password reset email sent to ${email}:`, info.messageId);
-
-            return {
-                success: true,
-                messageId: info.messageId,
-                message: 'Password reset email sent successfully'
-            };
-
-        } catch (error) {
-            console.error('❌ Failed to send password reset email:', error);
-            return { success: false, message: 'Failed to send password reset email' };
-        }
-    }
-
-    /**
-     * Send welcome email
-     */
     async sendWelcomeEmail(email, firstname) {
         if (!this.isConfigured) {
             console.log('📧 Email not configured - skipping welcome email');
