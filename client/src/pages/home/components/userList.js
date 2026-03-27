@@ -114,6 +114,37 @@ function UsersList({ searchKey, socket, onlineUser }) {
                 setAllChats(updatedChats);
             }
         };
+
+        const handleNewMessageNotification = (notification) => {
+            console.log('🔔 New message notification received:', notification);
+            
+            // Update chat list with new message
+            const updatedChats = allChats.map(chat => {
+                if (chat._id === notification.chatId) {
+                    return {
+                        ...chat,
+                        unreadMessageCount: (chat?.unreadMessageCount || 0) + 1,
+                        lastMessage: notification.message
+                    };
+                }
+                else return chat;
+            });
+            
+            setAllChats(updatedChats);
+            
+            // If chat doesn't exist in list, add it
+            if (!updatedChats.some(chat => chat._id === notification.chatId)) {
+                const newChat = {
+                    ...notification.chat,
+                    _id: notification.chatId,
+                    unreadMessageCount: 1,
+                    lastMessage: notification.message,
+                    members: [user.id, notification.message.sender._id]
+                };
+                setAllChats([...updatedChats, newChat]);
+            }
+        };
+
         const handleMessageDeleted = (data) => {
             const updatedChats = allChats.map(chat => {
                 if (chat._id === data.chatId) {
@@ -143,10 +174,12 @@ function UsersList({ searchKey, socket, onlineUser }) {
             setAllChats(updatedChats);
         };
         socket.on('receive-message', handleReceiveMessage);
+        socket.on('new-message-notification', handleNewMessageNotification);
         socket.on('message-deleted-update', handleMessageDeleted);
         socket.on('messages-read', handleMessagesRead);
         return () => {
             socket.off('receive-message', handleReceiveMessage);
+            socket.off('new-message-notification', handleNewMessageNotification);
             socket.off('message-deleted-update', handleMessageDeleted);
             socket.off('messages-read', handleMessagesRead);
         };

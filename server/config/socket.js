@@ -768,6 +768,7 @@ class SocketManager {
      */
     emitOnlineUsers() {
         const onlineUserIds = Array.from(this.userSockets.keys());
+        console.log('🟢 Emitting online users:', onlineUserIds);
         this.io.emit('online-users', onlineUserIds);
     }
 
