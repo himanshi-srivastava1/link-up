@@ -20,7 +20,16 @@ function ForgotPassword() {
             const response = await forgotPassword(email);
             
             if (response.success) {
-                toast.success("Password reset link sent to your email!");
+                // Check if token is returned (new flow) or email sent (old flow)
+                if (response.data && response.data.resetToken) {
+                    // New token-based flow
+                    toast.success("Password reset token generated!");
+                    setToken(response.data.resetToken);
+                    setIsResetMode(true);
+                } else {
+                    // Fallback for old email flow
+                    toast.success("Password reset link sent to your email!");
+                }
                 setEmail("");
             } else {
                 toast.error(response.message);
@@ -80,9 +89,9 @@ function ForgotPassword() {
                                 required
                             />
                             <p style={{ fontSize: '12px', color: '#666', marginBottom: '20px' }}>
-                                We'll send you a password reset link to your verified email address
+                                We'll generate a password reset token for you
                             </p>
-                            <button className="signup_button">Send Reset Link</button>
+                            <button className="signup_button">Generate Reset Token</button>
                         </form>
                     ) : (
                         <form onSubmit={onResetSubmit}>
