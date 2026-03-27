@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Loader from '../../../components/loader';
 
 const TENOR_API_KEY = "LIVDSRZULELA";
 
@@ -95,7 +96,9 @@ function GifPicker({ onSelect }) {
                 paddingRight: '5px'
             }} className="scrollbar-container">
                 {loading ? (
-                    <div style={{ color: '#fff', textAlign: 'center', gridColumn: 'span 2' }}>Loading...</div>
+                    <div style={{ gridColumn: 'span 2', position: 'relative', height: '100px' }}>
+                        <Loader />
+                    </div>
                 ) : (
                     gifs.map(gif => (
                         <img

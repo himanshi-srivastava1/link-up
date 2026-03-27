@@ -1,71 +1,43 @@
-const router=require("express").Router();
-const Chat=require('../models/chat.js');
-const Message=require('../models/message.js');
-const authMiddleware=require('../middlewares/authMiddleware');
-router.post('/create-new-chat',authMiddleware, async(req,res)=>{
-    try{
-      const chat=new Chat(req.body);
-      const savedChat= await chat.save();
-      await savedChat.populate('members');
-      res.status(201).send({
-        message:"Chat created successfully",
-        success:true,
-        data:savedChat
-      });
-    }
-    catch(err){
-        res.send({
-            message:err.message,
-            success:false
-        });
-    };
-});
-router.get('/get-all-chats',authMiddleware, async(req,res)=>{
-    try{
-      const allChats=await Chat.find({members:{$in: req.userId}})
-                               .populate('lastMessage')
-                               .populate('members')
-                               .sort({updatedAt:-1});
-      res.send({
-        message:"Chat fetched successfully",
-        success: true,
-        data: allChats
-      });
-    }
-    catch(err){
-        res.send({
-            message:err.message,
-            success:false
-        });
-    };
-});
-router.post('/clear-unread-messages', authMiddleware, async(req,res)=>{
-    try{
-        const chatId=req.body.chatId;
-        const chat=await Chat.findById(chatId);
-        if(chat){
-          const updatedChat=await Chat.findByIdAndUpdate(chatId, {unreadMessageCount:0}, {new:true})
-                                       .populate('members')
-                                       .populate('lastMessage');
-          await Message.updateMany({ chatId: chatId, read:false},{read:true})
-          res.send({
-            message:"Unread message cleared successfully.",
-            success:true,
-            data:updatedChat
-          })
-        }
-        else{
-          res.send({
-            message:"Chat not found", 
-            success:false
-          })
-        }
-    }
-    catch(err){
-         res.send({
-           message:err.message,
-           success:false
-         })
-    };
-});
-module.exports=router;
+const router = require("express").Router();
+const { authenticate } = require('../middleware/auth');
+const {
+    createNewChat,
+    getAllChats,
+    getChatById,
+    updateChat,
+    addMembers,
+    removeMembers,
+    leaveChat,
+    deleteChat,
+    clearUnreadMessages
+} = require('../controllers/chatController');
+const asyncHandler = require('../middleware/asyncHandler');
+
+// Create new chat
+router.post('/create-new-chat', authenticate, asyncHandler(createNewChat));
+
+// Get all chats for current user
+router.get('/get-all-chats', authenticate, asyncHandler(getAllChats));
+
+// Get chat by ID
+router.get('/:id', authenticate, asyncHandler(getChatById));
+
+// Update chat details (group chat only)
+router.put('/:id', authenticate, asyncHandler(updateChat));
+
+// Add members to group chat
+router.post('/:id/add-members', authenticate, asyncHandler(addMembers));
+
+// Remove members from group chat
+router.post('/:id/remove-members', authenticate, asyncHandler(removeMembers));
+
+// Leave chat
+router.post('/:id/leave', authenticate, asyncHandler(leaveChat));
+
+// Delete chat
+router.delete('/:id', authenticate, asyncHandler(deleteChat));
+
+// Clear unread messages
+router.post('/:id/clear-unread', authenticate, asyncHandler(clearUnreadMessages));
+
+module.exports = router;

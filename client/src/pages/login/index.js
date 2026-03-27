@@ -2,38 +2,49 @@ import React, { useState } from "react";
 import { loginuser } from '../../apicalls/auth.js';
 import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { useDispatch } from "react-redux";
-import { hideLoader, showLoader } from "../../redux/loaderSlice.js";
+import { useChatContext } from "../../context/ChatContext";
+
 function Login() {
-    const dispatch = useDispatch();
-    const [user, setUser] = useState({
+    const { setUser } = useChatContext();
+    const [user, setUserState] = useState({
         email: "",
         password: ""
     });
+
     async function onFormSubmit(event) {
         event.preventDefault();
         let response = null;
         try {
-            dispatch(showLoader());
             response = await loginuser(user);
-            dispatch(hideLoader());
+            
             if (response.success) {
                 toast.success(response.message);
-                localStorage.setItem('token', response.token);
+                // Store access token
+                localStorage.setItem('token', response.data.accessToken);
+                // Store user data in Context
+                setUser(response.data.user);
                 window.location.href = "/";
             }
+            else if (response.requiresVerification) {
+                // Handle email verification required
+                toast.error(response.message);
+                // Show verification UI or redirect to verification page
+                if (response.email) {
+                    // You could show a modal or redirect
+                    alert(`Please check your email for verification link: ${response.email}`);
+                    // Or redirect to verification page
+                    // window.location.href = `/verify-email?email=${encodeURIComponent(response.email)}`;
+                }
+            }
             else {
-                dispatch(hideLoader());
-                console.log(response);
                 toast.error(response.message);
             }
-        }
-        catch (err) {
-            dispatch(hideLoader());
+        } catch (err) {
             console.log(err);
-            toast.error(err.message);
-        };
+            toast.error(err.message || "Network error. Please try again.");
+        }
     }
+
     return (
         <div className="container">
             <div className="container-back-img"></div>
@@ -45,9 +56,9 @@ function Login() {
                 <div className="form">
                     <form onSubmit={onFormSubmit}>
                         <input type="email" placeholder="Email" value={user.email}
-                            onChange={(e) => setUser({ ...user, email: e.target.value })}></input>
+                            onChange={(e) => setUserState({ ...user, email: e.target.value })}></input>
                         <input type="password" placeholder="Password" value={user.password}
-                            onChange={(e) => setUser({ ...user, password: e.target.value })}></input>
+                            onChange={(e) => setUserState({ ...user, password: e.target.value })}></input>
                         <button className="signup_button">Sign In</button>
                     </form>
                 </div>
@@ -61,6 +72,7 @@ function Login() {
                 </div>
             </div>
         </div>
-    )
+    );
 }
+
 export default Login;

@@ -1,90 +1,92 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { getLoggedUser, getAllUsers } from "../apicalls/users.js";
+import { getCurrentUser, refreshToken } from "../apicalls/auth.js";
+import { getAllUsers } from "../apicalls/users.js";
 import { getAllChats } from "../apicalls/chat.js";
-import { useDispatch, useSelector } from "react-redux";
-import { hideLoader, showLoader } from "../redux/loaderSlice.js";
-import { setUser, setAllUsers, setAllChats } from "../redux/userSlice.js";
+import { useChatContext } from "../context/ChatContext";
 import Loader from './loader.js';
 
 function ProtectedRoute({ children }) {
-   const { user, allChats } = useSelector(state => state.userReducer);
+   const { user, loading, setUser, setAllUsers, setAllChats } = useChatContext();
    const navigate = useNavigate();
-   const dispatch = useDispatch();
 
    const getLoggedInUser = async () => {
       let response = null;
       try {
-         dispatch(showLoader());
-         response = await getLoggedUser();
-         dispatch(hideLoader());
+         response = await getCurrentUser();
+         
          if (response.success) {
-            dispatch(setUser(response.data));
+            setUser(response.data);
+         } else {
+            // Try to refresh token
+            const refreshResponse = await refreshToken();
+            if (refreshResponse.success) {
+                // Retry getting user with new token
+                const retryResponse = await getCurrentUser();
+                if (retryResponse.success) {
+                    setUser(retryResponse.data);
+                } else {
+                    toast.error("Session expired. Please login again.");
+                    navigate("/login");
+                }
+            } else {
+                toast.error(response.message || "Please login to continue.");
+                navigate("/login");
+            }
          }
-         else {
-            toast.error(response.message);
-            navigate("/login");
-         }
-      }
-      catch (error) {
-         toast.error(error.message);
-         dispatch(hideLoader());
+      } catch (error) {
+         toast.error("Session expired. Please login again.");
          navigate("/login");
+      } finally {
+         // setLoading(false);
       }
    };
 
    const getAllOtherUsers = async () => {
       let response = null;
       try {
-         dispatch(showLoader());
          response = await getAllUsers();
-         dispatch(hideLoader());
+         
          if (response.success) {
-            dispatch(setAllUsers(response.data));
-         }
-         else {
+            setAllUsers(response.data);
+         } else {
             toast.error(response.message);
-            navigate("/login");
          }
-      }
-      catch (error) {
-         toast.error(error.message);
-         dispatch(hideLoader());
-         navigate("/login");
+      } catch (error) {
+         toast.error("Failed to load users");
+      } finally {
+         // setLoading(false);
       }
    };
-   const getUsAllChats = async () => {
+
+   const getAllUserChats = async () => {
       let response = null;
       try {
-         dispatch(showLoader());
          response = await getAllChats();
-         dispatch(hideLoader());
+         
          if (response.success) {
-            dispatch(setAllChats(response.data));
-         }
-         else {
+            setAllChats(response.data);
+         } else {
             toast.error(response.message);
-            navigate("/login");
          }
-      }
-      catch (error) {
-         toast.error(error.message);
-         dispatch(hideLoader());
-         navigate("/login");
+      } catch (error) {
+         toast.error("Failed to load chats");
+      } finally {
+         // setLoading(false);
       }
    };
+
    useEffect(() => {
       if (localStorage.getItem('token')) {
-         //get the details of current user
          getLoggedInUser();
          getAllOtherUsers();
-         getUsAllChats();
-      }
-      else {
+         getAllUserChats();
+      } else {
          navigate("/login");
       }
    }, []);
+
    if (localStorage.getItem('token')) {
       if (!user) {
          return <Loader />;
@@ -94,4 +96,5 @@ function ProtectedRoute({ children }) {
 
    return null;
 }
+
 export default ProtectedRoute;

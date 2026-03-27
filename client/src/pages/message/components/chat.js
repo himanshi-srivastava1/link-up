@@ -1,25 +1,21 @@
 import { createNewMessage, getAllMessages, deleteMessage } from "../../../apicalls/message";
-import { useDispatch, useSelector } from "react-redux";
-import toast from "react-hot-toast";
+import { useChatContext } from "../../../context/ChatContext";
 import { clearUnreadMessageCount } from "../../../apicalls/chat";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import store from "../../../redux/store";
-import { setSelectedChat, setAllChats } from "../../../redux/userSlice";
-import { useNavigate } from "react-router-dom";
 import moment from "moment";
 import EmojiPicker from "emoji-picker-react";
 import GifPicker from "./GifPicker";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
 function ChatArea({ socket }) {
-    const { user, allChats } = useSelector(state => state.userReducer);
+    const { user, allChats, selectedChat, setAllChats, setSelectedChat } = useChatContext();
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
     const { id } = useParams();
-    const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { selectedChat } = useSelector(state => state.userReducer);
 
     useEffect(() => {
         if (user && socket) {
@@ -32,12 +28,12 @@ function ChatArea({ socket }) {
             const chatToRestore = allChats.find(chat => String(chat._id).trim() === String(id).trim());
 
             if (chatToRestore) {
-                dispatch(setSelectedChat(chatToRestore));
+                setSelectedChat(chatToRestore);
             } else {
                 console.error("Chat ID not found in allChats:", id);
             }
         }
-    }, [id, allChats, navigate, dispatch]);
+    }, [id, allChats, setSelectedChat, navigate]);
 
     const [message, setMessage] = useState('');
     const [allMessages, setAllMessages] = useState([]);
@@ -52,18 +48,28 @@ function ChatArea({ socket }) {
 
             const newMessage = {
                 chatId: id,
-                sender: user._id,
-                text: message,
-                image: typeof image === 'string' ? image : ''
+                content: {
+                    text: message || '',
+                    image: typeof image === 'string' ? image : ''
+                },
+                messageType: typeof image === 'string' ? 'image' : 'text'
             }
+
             const response = await createNewMessage(newMessage);
             if (loadingId) toast.dismiss(loadingId);
             if (response.success) {
+                const messageWithContent = response.data;
+
+                // Emit to other users in the chat (excluding current user)
+                const otherMembers = selectedChat.members.filter(m => (m._id || m.id) !== user.id);
                 socket.emit('send-message', {
-                    ...response.data,
-                    members: selectedChat.members.map(m => m._id),
-                    read: false,
-                })
+                    ...messageWithContent,
+                    members: otherMembers.map(m => m._id || m.id),
+                });
+                // Add to local messages immediately
+                setAllMessages(prevmsg => [messageWithContent, ...prevmsg]);
+
+                // Clear input fields
                 setMessage('');
                 setShowEmojiPicker(false);
                 setShowGifPicker(false);
@@ -86,19 +92,23 @@ function ChatArea({ socket }) {
 
             const newMessage = {
                 chatId: id,
-                sender: user._id,
-                text: message,
-                image: '',
-                video: videoBase64
+                content: {
+                    text: message || '',
+                    image: '',
+                    video: videoBase64
+                },
+                messageType: 'video'
             }
             const response = await createNewMessage(newMessage);
             toast.dismiss(loadingId);
             if (response.success) {
+                const messageWithContent = response.data;
+
                 socket.emit('send-message', {
-                    ...response.data,
+                    ...messageWithContent,
                     members: selectedChat.members.map(m => m._id),
-                    read: false,
                 })
+                setAllMessages(prevmsg => [messageWithContent, ...prevmsg]);
                 setMessage('');
                 setShowEmojiPicker(false);
                 setShowGifPicker(false);
@@ -131,13 +141,17 @@ function ChatArea({ socket }) {
             const response = await deleteMessage(messageId);
             if (response.success) {
                 const deletedMsg = response.data;
-                setAllMessages(prev => prev.filter(msg => msg._id !== messageId));
-                socket.emit('delete-message', {
-                    chatId: id,
-                    messageId: messageId,
-                    wasUnread: !deletedMsg.read,
-                    members: selectedChat.members.map(m => m._id)
-                });
+                if (deletedMsg && deletedMsg._id) {
+                    setAllMessages(prev => prev.filter(msg => msg._id !== messageId));
+                    socket.emit('delete-message', {
+                        chatId: id,
+                        messageId: messageId,
+                        wasUnread: deletedMsg.read || false,
+                        members: selectedChat.members.map(m => m._id)
+                    });
+                } else {
+                    console.error('Deleted message is undefined or missing _id:', deletedMsg);
+                }
             } else {
                 toast.error(response.message);
             }
@@ -166,40 +180,51 @@ function ChatArea({ socket }) {
     useEffect(() => {
         if (selectedChat && socket) {
             getMessages();
-            socket.emit('read-all-messages', {
+            socket.emit('mark-messages-read', {
                 chatId: id,
-                readBy: user._id,
+                readBy: user.id,
                 members: selectedChat.members.map(m => m._id)
             });
-            if (selectedChat?.lastMessage?.sender !== user._id)
+            if (selectedChat?.lastMessage?.sender !== user.id)
                 clearUnreadMessages();
 
             const handleReceiveMessage = (data) => {
                 if (data.chatId === id) {
-                    let updatedMessage1 = data;
-                    if (data.sender !== user._id) {
-                        updatedMessage1 = { ...data, read: true }
+                    let updatedMessage = data;
+                    const senderId = data.sender._id || data.sender.id || data.sender;
+                    // Mark as read if it's not from current user
+                    if (senderId !== user.id) {
+                        updatedMessage = { ...data, readBy: [{ user: user.id }] };
+                        
+                        // Instantly notify backend that this message was read, so sender gets double-tick!
+                        socket.emit('mark-messages-read', {
+                            chatId: id,
+                            readBy: user.id,
+                            members: selectedChat.members.map(m => m._id)
+                        });
                     }
-                    setAllMessages(prevmsg => [updatedMessage1, ...prevmsg]);
-                    const currentAllChats = store.getState().userReducer.allChats;
-                    const updatedChats = currentAllChats.map(chat => {
-                        if (chat._id === data.chatId && data.sender !== user._id) {
-                            clearUnreadMessages();
+
+                    // Add message to local state
+                    setAllMessages(prevmsg => [updatedMessage, ...prevmsg]);
+
+                    // Update chat list
+                    const updatedChats = allChats.map(chat => {
+                        if (chat._id === data.chatId) {
                             return {
                                 ...chat,
-                                unreadMessageCount: 0,
-                                lastMessage: updatedMessage1
+                                unreadMessageCount: senderId !== user.id ? 0 : chat.unreadMessageCount || 0,
+                                lastMessage: updatedMessage
                             };
                         }
                         else return chat;
                     });
-                    dispatch(setAllChats(updatedChats));
+                    setAllChats(updatedChats);
                 }
             };
 
             const handleMessagesRead = (data) => {
-                if (data.chatId === id && data.readBy !== user._id) {
-                    setAllMessages(prev => prev.map(msg => ({ ...msg, read: true })));
+                if (data.chatId === id && data.userId !== user.id) {
+                    setAllMessages(prev => prev.map(msg => ({ ...msg, readBy: [{ user: data.userId }] })));
                 }
             };
 
@@ -207,14 +232,28 @@ function ChatArea({ socket }) {
                 if (data.chatId === id) {
                     setAllMessages(prev => prev.filter(msg => msg._id !== data.messageId));
                 }
+                const updatedChats = allChats.map(chat => {
+                    if (chat._id === data.chatId) {
+                        let updated = { ...chat };
+                        if (data.wasUnread) {
+                            updated.unreadMessageCount = Math.max((updated.unreadMessageCount || 0) - 1, 0);
+                        }
+                        if (data.newLastMessage !== undefined) {
+                            updated.lastMessage = data.newLastMessage;
+                        }
+                        return updated;
+                    }
+                    return chat;
+                });
+                setAllChats(updatedChats);
             };
 
             socket.on('receive-message', handleReceiveMessage);
-            socket.on('messages-read-update', handleMessagesRead);
-            socket.on('message-deleted-update', handleMessageDeleted);
+            socket.on('messages-read', handleMessagesRead);
+            socket.on('message-deleted', handleMessageDeleted);
             return () => {
                 socket.off('receive-message', handleReceiveMessage);
-                socket.off('messages-read-update', handleMessagesRead);
+                socket.off('messages-read', handleMessagesRead);
                 socket.off('message-deleted-update', handleMessageDeleted);
             };
         }
@@ -244,7 +283,7 @@ function ChatArea({ socket }) {
         if (!file) return;
         setShowAttachmentMenu(false);
         if (file.size > 25000000) {
-            toast.error("Video must be less than 25MB"); 
+            toast.error("Video must be less than 25MB");
             e.target.value = null;
             return;
         }
@@ -266,35 +305,41 @@ function ChatArea({ socket }) {
                     <div className="scrollbar-container">
                         <div className='messages-area'>
                             {allMessages.map((msg, index) => {
-                                const isMessageSender = msg.sender === user._id;
+                                console.log('Message debug:', {
+                                    msgSenderId: msg.sender._id || msg.sender?.id || msg.sender,
+                                    currentUserId: user.id,
+                                    isMessageSender: msg.sender._id === user.id || msg.sender?.id === user.id || msg.sender === user.id
+                                });
+
+                                const isMessageSender = msg.sender._id === user.id || msg.sender?.id === user.id || msg.sender === user.id;
                                 return <div key={index} className="message-container">
                                     <div className={isMessageSender ? "send-message" : "received-message"}>
-                                        <div>{msg.text}</div>
-                                        <div>{msg.image && <img src={msg.image} alt="content" style={{ maxHeight: '200px', maxWidth: '100%', borderRadius: '8px' }} />}</div>
-                                        <div>{msg.video && (<video src={msg.video} controls style={{ maxHeight: '200px', maxWidth: '300px', borderRadius: '8px' }} />)}</div>
+                                        <div>{msg.content.text}</div>
+                                        <div>{msg.content.image && <img src={msg.content.image} alt="content" style={{ maxHeight: '200px', maxWidth: '100%', borderRadius: '8px' }} />}</div>
+                                        <div>{msg.content.video && (<video src={msg.content.video} controls style={{ maxHeight: '200px', maxWidth: '300px', borderRadius: '8px' }} />)}</div>
                                     </div>
                                     <div className={isMessageSender ? "message-info-sender" : "message-info"}>
                                         <div className={isMessageSender ? "message-timestamp-sender" : "message-timestamp"}>
                                             {formatTime(msg.createdAt)}
                                         </div>
                                         {isMessageSender && (
-                                            <i 
-                                                className="fa-solid fa-trash" 
-                                                style={{ cursor: 'pointer', marginRight: '5px', fontSize: '11px', color: '#ffb3b3' }} 
-                                                onClick={() => handleDeleteMessage(msg._id)}
+                                            <i
+                                                className="fa-solid fa-trash"
+                                                style={{ cursor: 'pointer', marginRight: '5px', fontSize: '11px', color: '#ffb3b3' }}
+                                                onClick={() => handleDeleteMessage(msg._id || msg.id || msg.sender?._id || msg.sender?.id)}
                                             ></i>
                                         )}
-                                        <div className="message-icon-sender">{isMessageSender && !msg.read && <i className="fa-solid fa-check "></i>}</div>
-                                        <div className="message-icon-sender">{isMessageSender && msg.read && <i className="fa-solid fa-check-double "></i>}</div>
+                                        <div className="message-icon-sender">{isMessageSender && (!msg.readBy || msg.readBy.length === 0) && <i className="fa-solid fa-check "></i>}</div>
+                                        <div className="message-icon-sender">{isMessageSender && (msg.readBy && msg.readBy.length > 0) && <i className="fa-solid fa-check-double "></i>}</div>
                                     </div>
                                 </div>
                             })}
                         </div>
                         {showEmojiPicker &&
-                            <div style={{ 
-                                position: 'absolute', 
-                                bottom: '70px', 
-                                right: '20px', 
+                            <div style={{
+                                position: 'absolute',
+                                bottom: '70px',
+                                right: '20px',
                                 zIndex: 1000,
                                 boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
                                 borderRadius: '15px',

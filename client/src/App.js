@@ -4,43 +4,50 @@ import Signup from './pages/signup';
 import Login from './pages/login';
 import Message from './pages/message';
 import Profile from "./pages/profile";
+import ChangePassword from "./pages/changePassword/index.js";
 import ForgotPassword from "./pages/forgotPassword/index.js";
+import VerifyEmail from "./pages/verifyEmail/index.js";
 import { Toaster } from 'react-hot-toast';
 import ProtectedRoute from './components/protectedRoute.js';
-import Loader from "./components/loader.js";
-import { useSelector } from "react-redux";
+import { ChatProvider } from './context/ChatContext';
+
 function App() {
-  const { loader } = useSelector(state => state.loaderReducer)
   return (
-    <div>
+    <ChatProvider>
       <Toaster
         position="top-center"
         reverseOrder={false}
       />
-      {loader && <Loader />}
       <BrowserRouter>
         <Routes>
           <Route path='/' element={
             <ProtectedRoute>
               <Home />
-            </ProtectedRoute>}>
-          </Route>
-          <Route path='/login' element={<Login />}></Route>
-          <Route path='/signup' element={<Signup />}></Route>
-          <Route path='/forgot_pass' element={<ForgotPassword />}></Route>
+            </ProtectedRoute>
+          } />
+          <Route path='/login' element={<Login />} />
+          <Route path='/signup' element={<Signup />} />
+          <Route path='/forgot_pass' element={<ForgotPassword />} />
+          <Route path='/verify-email/:token' element={<VerifyEmail />} />
+          <Route path='/reset-password/:token' element={<ForgotPassword />} />
           <Route path='/profile/:id' element={
             <ProtectedRoute>
               <Profile />
-            </ProtectedRoute>}>
-          </Route>
+            </ProtectedRoute>
+          } />
+          <Route path='/change-password' element={
+            <ProtectedRoute>
+              <ChangePassword />
+            </ProtectedRoute>
+          } />
           <Route path='/message/:id' element={
             <ProtectedRoute>
               <Message />
             </ProtectedRoute>
-          }></Route>
+          } />
         </Routes>
       </BrowserRouter>
-    </div>
+    </ChatProvider>
   );
 }
 

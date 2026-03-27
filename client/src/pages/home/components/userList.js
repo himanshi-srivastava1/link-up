@@ -1,30 +1,35 @@
-import toast from "react-hot-toast";
-import { useDispatch, useSelector } from "react-redux";
-import { createNewChat } from "../../../apicalls/chat";
-import { hideLoader, showLoader } from "../../../redux/loaderSlice";
-import { setAllChats, setSelectedChat, setSelectedUser } from "../../../redux/userSlice";
 import { useNavigate } from "react-router-dom";
-import moment from "moment";
+import { useChatContext } from "../../../context/ChatContext";
+import toast from "react-hot-toast";
+import { createNewChat } from "../../../apicalls/chat.js";
 import { useEffect, useState } from "react";
-import store from "../../../redux/store";
+import moment from "moment";
 
 function UsersList({ searchKey, socket, onlineUser }) {
-    const { allUsers, allChats, user: currentUser, selectedUser, selectedChat } = useSelector(state => state.userReducer);
+    const { allUsers, allChats, user, setAllChats, selectedChat, setSelectedChat, setSelectedUser, setLoading } = useChatContext();
+    const [selectedUser, setSelectedUserLocal] = useState(null);
     const [typingUsers, setTypingUsers] = useState({});
-    const dispatch = useDispatch();
     const navigate = useNavigate();
+
+    // Debug logging
+    console.log('🔍 UsersList Debug Info:');
+    console.log('currentUser:', user);
+    console.log('allUsers:', allUsers);
+    console.log('allChats:', allChats);
+
     const startNewChat = async (searchedUser) => {
         try {
-            dispatch(showLoader());
-            const response = await createNewChat([currentUser._id, searchedUser._id]);
-            dispatch(hideLoader());
+            setLoading(true);
+
+            const response = await createNewChat([user?.id, searchedUser._id]);
+            
             if (response.success) {
                 toast.success(response.message);
                 const newChat = response.data;
                 const updatedChats = [...allChats, newChat];
-                dispatch(setAllChats(updatedChats));
-                dispatch(setSelectedChat(newChat));
-                dispatch(setSelectedUser(searchedUser));
+                setAllChats(updatedChats);
+                setSelectedChat(newChat);
+                setSelectedUser(searchedUser);
                 navigate(`/message/${newChat._id}`);
             }
             else {
@@ -33,14 +38,16 @@ function UsersList({ searchKey, socket, onlineUser }) {
         }
         catch (err) {
             toast.error(err.message);
-            dispatch(hideLoader());
-        };
+        }
+        finally {
+            setLoading(false);
+        }
     }
     const openChat = async (selectedUser) => {
-        const chat = await allChats.find(chat => chat.members.map(m => m._id).includes(selectedUser._id) && chat.members.map(m => m._id).includes(currentUser._id));
+        const chat = await allChats.find(chat => chat.members.map(m => m._id).includes(selectedUser._id) && chat.members.map(m => m._id).includes(user.id));
         if (chat) {
-            dispatch(setSelectedChat(chat));
-            dispatch(setSelectedUser(selectedUser));
+            setSelectedChat(chat);
+            setSelectedUser(selectedUser);
             navigate(`/message/${chat._id}`);
         }
     }
@@ -51,8 +58,30 @@ function UsersList({ searchKey, socket, onlineUser }) {
             return '';
         }
         else {
-            const pretext = chat?.lastMessage?.sender === currentUser._id ? "You: " : "";
-            return pretext + chat?.lastMessage?.text?.substring(0, 31);
+            const senderId = chat.lastMessage?.sender?._id || chat.lastMessage?.sender?.id || chat.lastMessage?.sender;
+            const pretext = senderId === user.id ? "You: " : "";
+            const msgType = chat.lastMessage.messageType || chat.lastMessage.actualMessageType;
+            
+            if (msgType === 'image') {
+                const imgStr = chat.lastMessage.content?.image || "";
+                const isGif = imgStr.toLowerCase().includes('.gif') || imgStr.toLowerCase().includes('giphy') || imgStr.toLowerCase().includes('tenor');
+                const isSticker = imgStr.toLowerCase().includes('.webp') || imgStr.toLowerCase().includes('sticker');
+                
+                if (isGif) {
+                    return <span>{pretext}<i className="fa-solid fa-icons" style={{marginRight: "4px"}}></i>GIF</span>;
+                }
+                if (isSticker) {
+                    return <span>{pretext}<i className="fa-solid fa-note-sticky" style={{marginRight: "4px"}}></i>Sticker</span>;
+                }
+                return <span>{pretext}<i className="fa-solid fa-image" style={{marginRight: "4px"}}></i>Photo</span>;
+            } else if (msgType === 'video') {
+                return <span>{pretext}<i className="fa-solid fa-video" style={{marginRight: "4px"}}></i>Video</span>;
+            } else if (msgType === 'file') {
+                return <span>{pretext}<i className="fa-solid fa-file" style={{marginRight: "4px"}}></i>File</span>;
+            }
+            
+            const textContent = chat.lastMessage?.content?.text || chat.lastMessage?.text || "";
+            return <span>{pretext}{textContent.substring(0, 31)}</span>;
         }
     }
     const getLastMessageTimestamp = (userId) => {
@@ -70,8 +99,7 @@ function UsersList({ searchKey, socket, onlineUser }) {
     useEffect(() => {
         if (!socket) return;
         const handleReceiveMessage = (message) => {
-            const selectedChat = store.getState().userReducer.selectedChat;
-            const allChats = store.getState().userReducer.allChats;
+            // Check if the incoming message is NOT for the currently active chat
             if (selectedChat?._id !== message.chatId) {
                 const updatedChats = allChats.map(chat => {
                     if (chat._id === message.chatId) {
@@ -83,40 +111,50 @@ function UsersList({ searchKey, socket, onlineUser }) {
                     }
                     else return chat;
                 });
-                updatedChats.sort((a, b) => {
-                    const dateA = new Date(a.lastMessage?.createdAt || 0);
-                    const dateB = new Date(b.lastMessage?.createdAt || 0);
-                    return dateB - dateA;
-                });
-                dispatch(setAllChats(updatedChats));
+                setAllChats(updatedChats);
             }
         };
         const handleMessageDeleted = (data) => {
-            if (data.wasUnread) {
-                const allChats = store.getState().userReducer.allChats;
-                const updatedChats = allChats.map(chat => {
-                    if (chat._id === data.chatId) {
-                        return {
-                            ...chat,
-                            unreadMessageCount: Math.max((chat.unreadMessageCount || 0) - 1, 0)
-                        };
+            const updatedChats = allChats.map(chat => {
+                if (chat._id === data.chatId) {
+                    let updated = { ...chat };
+                    if (data.wasUnread) {
+                        updated.unreadMessageCount = Math.max((updated.unreadMessageCount || 0) - 1, 0);
                     }
-                    return chat;
-                });
-                dispatch(setAllChats(updatedChats));
-            }
+                    if (data.newLastMessage !== undefined) {
+                        updated.lastMessage = data.newLastMessage;
+                    }
+                    return updated;
+                }
+                return chat;
+            });
+            setAllChats(updatedChats);
+        };
+        const handleMessagesRead = (data) => {
+            const updatedChats = allChats.map(chat => {
+                if (chat._id === data.chatId) {
+                    return {
+                        ...chat,
+                        unreadMessageCount: 0
+                    };
+                }
+                return chat;
+            });
+            setAllChats(updatedChats);
         };
         socket.on('receive-message', handleReceiveMessage);
         socket.on('message-deleted-update', handleMessageDeleted);
+        socket.on('messages-read', handleMessagesRead);
         return () => {
             socket.off('receive-message', handleReceiveMessage);
             socket.off('message-deleted-update', handleMessageDeleted);
+            socket.off('messages-read', handleMessagesRead);
         };
-    }, [socket, dispatch])
+    }, [socket, user, allChats, setAllChats, selectedChat])
     const getUnreadMessageCount = (userId) => {
         const chat = allChats.find(chat => chat.members.map(m => m._id).includes(userId));
         if (chat && chat.unreadMessageCount) {
-            if (chat.lastMessage?.sender !== currentUser._id)
+            if (chat.lastMessage?.sender !== user.id)
                 return chat.unreadMessageCount;
             return "";
         }
@@ -128,6 +166,11 @@ function UsersList({ searchKey, socket, onlineUser }) {
         else {
             return allUsers
                 .filter(user => {
+                    // Filter out current user from the list
+                    if (user && user._id === user.id) {
+                        return false;
+                    }
+                    
                     const search = searchKey?.toLowerCase() || "";
                     const fname = user.firstname?.toLowerCase() || "";
                     const lname = user.lastname?.toLowerCase() || "";
@@ -138,7 +181,7 @@ function UsersList({ searchKey, socket, onlineUser }) {
     useEffect(() => {
         let timers = {};
         const handleTyping = (data) => {
-            if (currentUser._id !== data.sender) {
+            if (user.id !== data.sender) {
                 const chat_id = data.chatId;
                 setTypingUsers((prev) => ({
                     ...prev,
@@ -162,63 +205,73 @@ function UsersList({ searchKey, socket, onlineUser }) {
             socket.off('started-typing', handleTyping);
             Object.values(timers).forEach(timer => clearTimeout(timer));
         };
-    }, [socket, currentUser._id]);
+    }, [socket, user.id])
     return (
-        getData()
-            .map((obj) => {
-                let user = obj;
-                let currentChatId = null;
-                if (obj.members) {
-                    user = obj.members.find(m => m._id !== currentUser._id);
-                    currentChatId = obj._id;
-                } else {
-                    const existingChat = allChats.find(chat =>
-                        chat.members.map(m => m._id).includes(user._id));
-                    currentChatId = existingChat?._id;
-                }
-                return (
-                    <div className="user-on-filter" onClick={() => openChat(user)} key={user._id}>
-                        {onlineUser.includes(user._id) && <div className="online-bubble"></div>}
-                        <div className="user-search-filter" >
-                            <div className="filtered-user">
-                                <div className="filter-user-display">
-                                    {user.profilePic &&
-                                        <img src={user.profilePic} alt="Profile Pic" class="user-profile-image"></img>
-                                    }
-                                    {!user.profilePic &&
-                                        <div className="user-default-profile-pic">
-                                            {user.firstname?.charAt(0).toUpperCase() + user.lastname?.charAt(0).toUpperCase()}
+        <div>
+            {getData()
+                .map((obj) => {
+                    let displayUser = obj;
+                    let currentChatId = null;
+                    if (obj.members) {
+                        displayUser = obj.members.find(m => m._id !== user.id && m.id !== user.id);
+                        currentChatId = obj._id;
+                    } else {
+                        const existingChat = allChats.find(chat =>
+                            chat.members.map(m => m._id).includes(displayUser._id) && chat.members.map(m => m._id).includes(user.id));
+                        currentChatId = existingChat?._id;
+                    }
+                    if (!displayUser) return null; // Safe guard
+                    return (
+                        <div className="user-on-filter" onClick={() => currentChatId ? openChat(displayUser) : startNewChat(displayUser)} key={displayUser._id}>
+                            {onlineUser.includes(displayUser._id) && <div className="online-bubble"></div>}
+                            <div className="user-search-filter" >
+                                <div className="filtered-user">
+                                    <div className="filter-user-display">
+                                        {displayUser.profilePic &&
+                                            <img src={displayUser.profilePic} alt="Profile Pic" className="user-profile-image"></img>
+                                        }
+                                        {!displayUser.profilePic &&
+                                            <div className="user-default-profile-pic">
+                                                {displayUser.firstname?.charAt(0).toUpperCase() + displayUser.lastname?.charAt(0).toUpperCase()}
+                                            </div>
+                                        }
+                                        <div className="filter-user-details">
+                                            <div className="user-display-name">{formatName(displayUser)}</div>
+                                            {
+                                                typingUsers[currentChatId] && <div className="typing-indicator"><i>typing...</i></div>
+                                            }
+                                            {
+                                                !typingUsers[currentChatId] && <div className="user-display-email">{getLastMessage(displayUser._id) || displayUser.email}</div>
+                                            }
                                         </div>
-                                    }
-                                    <div className="filter-user-details">
-                                        <div className="user-display-name">{formatName(user)}</div>
-                                        {
-                                            typingUsers[currentChatId] && <div className="typing-indicator"><i>typing...</i></div>
-                                        }
-                                        {
-                                            !typingUsers[currentChatId] && <div className="user-display-email">{getLastMessage(user._id) || user.email}</div>
-                                        }
+                                        <div>
+                                            <div className="last-message-timestamp">
+                                                {getLastMessageTimestamp(displayUser._id)}
+                                            </div>
+                                            {
+                                                getUnreadMessageCount(displayUser._id) !== "" &&
+                                                    <div className="unread-message-count">{getUnreadMessageCount(displayUser._id)}</div>
+                                            }
+                                            {
+                                                !currentChatId && (
+                                                    <div className="user-start-chat-btn" onClick={(e) => { e.stopPropagation(); startNewChat(displayUser); }} style={{
+                                                        fontSize: '11px',
+                                                        cursor: 'pointer',
+                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                                    }}>
+                                                        Start Chat
+                                                    </div>
+                                                )
+                                            }
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div className="last-message-timestamp">
-                                            {getLastMessageTimestamp(user._id)}
-                                        </div>
-                                        {
-                                            getUnreadMessageCount(user._id) !== "" &&
-                                            <div className="unread-message-count">{getUnreadMessageCount(user._id)}</div>
-                                        }
-                                    </div>
-                                    {
-                                        !allChats.find(chat => chat.members.map(m => m._id).includes(user._id)) &&
-                                        <div className="user-start-chat">
-                                            <button className="user-start-chat-btn" onClick={() => startNewChat(user)}>Start Chat</button>
-                                        </div>
-                                    }
                                 </div>
                             </div>
                         </div>
-                    </div>)
-            })
-    )
+                    );
+                })}
+        </div>
+    );
 }
+
 export default UsersList;

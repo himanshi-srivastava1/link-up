@@ -1,93 +1,39 @@
 const router = require("express").Router();
-const authMiddleware = require("../middlewares/authMiddleware");
-const Chat = require('../models/chat.js');
-const Message = require('../models/message.js');
-const cloudinary = require('../cloudinary.js');
+const { authenticate } = require("../middleware/auth");
+const {
+    newMessage,
+    getAllMessages,
+    deleteMessage,
+    editMessage,
+    markMessagesAsRead,
+    addReaction,
+    removeReaction,
+    getMessageById
+} = require("../controllers/messageController");
+const asyncHandler = require('../middleware/asyncHandler');
 
-router.post('/new-message', authMiddleware, async (req, res) => {
-    try {
-        if (req.body.image) {
-            const uploadedImage = await cloudinary.uploader.upload(req.body.image, {
-                folder: 'link-up-messages'
-            });
-            req.body.image = uploadedImage.secure_url;
-        }
+// Send new message
+router.post('/new-message', authenticate, asyncHandler(newMessage));
 
-        if (req.body.video) {
-            const uploadedVideo = await cloudinary.uploader.upload(req.body.video, {
-                folder: 'link-up-messages',
-                resource_type: "video"
-            });
-            req.body.video = uploadedVideo.secure_url;
-        }
+// Get all messages for a chat
+router.get('/get-all-messages/:chatId', authenticate, asyncHandler(getAllMessages));
 
-        const newMessage = new Message(req.body);
-        const savedMessage = await newMessage.save();
-        const savedChat = await Chat.findByIdAndUpdate(
-            req.body.chatId, {
-            lastMessage: savedMessage._id,
-            $inc: { unreadMessageCount: 1 }
-        });
-        res.status(201).send({
-            message: "Message Sent Successfully",
-            success: true,
-            data: savedMessage
-        });
-    }
-    catch (err) {
-        res.send({
-            message: err.message || (err.error && err.error.message) || err.name || "Upload failed: Unknown empty error",
-            success: false
-        });
-    }
-});
+// Delete message
+router.delete('/delete-message/:id', authenticate, asyncHandler(deleteMessage));
 
-router.get('/get-all-messages/:chatId', authMiddleware, async (req, res) => {
-    try {
-        const allMessages = await Message.find({ chatId: req.params.chatId })
-            .sort({ createdAt: 1 });
-        res.send({
-            message: "Messages fetched successfully",
-            success: true,
-            data: allMessages
-        });
-    }
-    catch (err) {
-        res.send({
-            message: err.message,
-            success: false
-        });
-    }
-});
+// Edit message
+router.put('/edit-message/:id', authenticate, asyncHandler(editMessage));
 
-router.delete('/delete-message/:id', authMiddleware, async (req, res) => {
-    try {
-        const messageToDelete = await Message.findById(req.params.id);
-        if (!messageToDelete) {
-             return res.send({ message: "Message not found", success: false });
-        }
-        
-        const wasUnread = !messageToDelete.read;
-        const deletedMessage = await Message.findByIdAndDelete(req.params.id);
+// Mark messages as read
+router.post('/mark-read/:chatId', authenticate, asyncHandler(markMessagesAsRead));
 
-        if (wasUnread) {
-            await Chat.findByIdAndUpdate(messageToDelete.chatId, {
-                $inc: { unreadMessageCount: -1 }
-            });
-        }
+// Add reaction to message
+router.post('/add-reaction/:id', authenticate, asyncHandler(addReaction));
 
-        res.send({
-            message: "Message deleted successfully",
-            success: true,
-            data: deletedMessage
-        });
-    }
-    catch (err) {
-        res.send({
-            message: err.message || "Error deleting message",
-            success: false
-        });
-    }
-});
+// Remove reaction from message
+router.post('/remove-reaction/:id', authenticate, asyncHandler(removeReaction));
+
+// Get message by ID
+router.get('/:id', authenticate, asyncHandler(getMessageById));
 
 module.exports = router;

@@ -1,20 +1,21 @@
-import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import image from "./index.js";
+
+import { useChatContext } from "../../context/ChatContext";
+
 function Header({profileImg}) {
-    const { user } = useSelector(state => state.userReducer);
+    const { user } = useChatContext();
     const navigate = useNavigate();
     function getinitials() {
-        let fname = user?.firstname.toUpperCase().charAt(0);
-        let lname = user?.lastname.toUpperCase().charAt(0);
+        let fname = user?.firstname?.toUpperCase()?.charAt(0) || '';
+        let lname = user?.lastname?.toUpperCase()?.charAt(0) || '';
         let name = fname + lname;
-        return name;
+        return name || 'U';
     }
     function getfullname() {
-        let fname = user?.firstname;
-        let lname = user?.lastname;
-        let name = fname + ' ' + lname;
-        return name;
+        let fname = user?.firstname || '';
+        let lname = user?.lastname || '';
+        let name = (fname + ' ' + lname).trim();
+        return name || 'Unknown User';
     }
     return (
         <div className="app-header">
@@ -30,9 +31,9 @@ function Header({profileImg}) {
                 </div>
             </div>
             <div className="app-user-profile">
-                <div className="logged-user-name">{getfullname()}</div>
-                {profileImg && <img src={profileImg} alt='PP' className="logged-user-profile-pic"/>}
-                {!profileImg && <div className="logged-user-profile-pic">{getinitials()}</div>}
+                <div className="logged-user-name" style={{ cursor: 'pointer' }} onClick={() => navigate(`/profile/${user._id || user.id}`)}>{getfullname()}</div>
+                {profileImg && <img src={profileImg} alt='PP' onClick={() => navigate(`/profile/${user._id || user.id}`)} style={{ cursor: 'pointer' }} className="logged-user-profile-pic"/>}
+                {!profileImg && <div className="logged-user-profile-pic" onClick={() => navigate(`/profile/${user._id || user.id}`)} style={{ cursor: 'pointer' }}>{getinitials()}</div>}
                 <i className="fa fa-sign-out logout-btn" title="Logout" aria-hidden="true" onClick={() => {
                     localStorage.removeItem('token');
                     window.location.href = '/login';
@@ -41,4 +42,5 @@ function Header({profileImg}) {
         </div>
     );
 }
+
 export default Header;

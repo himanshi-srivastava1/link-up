@@ -20,7 +20,7 @@ export const createNewChat=async(members)=>{
 
 export const clearUnreadMessageCount=async(chatId)=>{
     try{
-         const response=await axiosInstance.post('/api/chat/clear-unread-messages',{chatId});
+         const response=await axiosInstance.post(`/api/chat/${chatId}/clear-unread`);
          return response.data;
     }
     catch(err){

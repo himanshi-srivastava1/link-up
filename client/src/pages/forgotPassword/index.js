@@ -1,44 +1,43 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { useDispatch } from "react-redux";
-import { hideLoader, showLoader } from "../../redux/loaderSlice.js";
-import { sendOtpApi, resetPasswordApi } from "../../apicalls/auth.js";
+import { useChatContext } from "../../context/ChatContext";
+import { forgotPassword, resetPassword } from "../../apicalls/auth.js";
 
 function ForgotPassword() {
-    const dispatch = useDispatch();
+    const { setLoading } = useChatContext();
     const navigate = useNavigate();
-    const [step, setStep] = useState(1);
-    const [user, setUser] = useState({
-        email: "",
-        password: "",
-        otp: ""
-    });
+    const { token: routeToken } = useParams();
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [token, setToken] = useState("");
+    const [isResetMode, setIsResetMode] = useState(false);
 
     async function onFormSubmit(event) {
         event.preventDefault();
         try {
-            dispatch(showLoader());
-            const response = await sendOtpApi(user.email);
-            dispatch(hideLoader());
+            setLoading(true);
+            const response = await forgotPassword(email);
+            
             if (response.success) {
-                toast.success(response.message);
-                setStep(2);
+                toast.success("Password reset link sent to your email!");
+                setEmail("");
             } else {
                 toast.error(response.message);
             }
         } catch (error) {
-            dispatch(hideLoader());
-            toast.error(error.message);
+            toast.error(error.message || "Failed to send reset email");
+        } finally {
+            setLoading(false);
         }
     }
 
     async function onResetSubmit(event) {
         event.preventDefault();
         try {
-            dispatch(showLoader());
-            const response = await resetPasswordApi(user);
-            dispatch(hideLoader());
+            setLoading(true);
+            const response = await resetPassword(token, password);
+            
             if (response.success) {
                 toast.success(response.message);
                 navigate("/login");
@@ -46,10 +45,21 @@ function ForgotPassword() {
                 toast.error(response.message);
             }
         } catch (error) {
-            dispatch(hideLoader());
-            toast.error(error.message);
+            toast.error(error.message || "Failed to reset password");
+        } finally {
+            setLoading(false);
         }
     }
+
+    // Check if we have a token in URL (user clicked reset link)
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const resetToken = routeToken || urlParams.get('token');
+        if (resetToken) {
+            setToken(resetToken);
+            setIsResetMode(true);
+        }
+    }, [routeToken]);
 
     return (
         <div className="container">
@@ -57,33 +67,47 @@ function ForgotPassword() {
             <div className="container-back-color"></div>
             <div className="card">
                 <div className="card_title">
-                    <h2>{step === 1 ? "Forgot Password" : "Reset Password"}</h2>
+                    <h2>{!isResetMode ? "Forgot Password" : "Reset Password"}</h2>
                 </div>
                 <div className="form">
-                    {step === 1 ? (
+                    {!isResetMode ? (
                         <form onSubmit={onFormSubmit}>
-                            <input type="email" placeholder="Email" value={user.email}
-                                onChange={(e) => setUser({ ...user, email: e.target.value })}></input>
-                            <button className="signup_button">Send OTP</button>
+                            <input 
+                                type="email" 
+                                placeholder="Enter your email address" 
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                            />
+                            <p style={{ fontSize: '12px', color: '#666', marginBottom: '20px' }}>
+                                We'll send you a password reset link to your verified email address
+                            </p>
+                            <button className="signup_button">Send Reset Link</button>
                         </form>
                     ) : (
                         <form onSubmit={onResetSubmit}>
-                            <input type="text" placeholder="6-digit OTP" value={user.otp}
-                                onChange={(e) => setUser({ ...user, otp: e.target.value })}></input>
-                            <input type="password" placeholder="New Password" value={user.password}
-                                onChange={(e) => setUser({ ...user, password: e.target.value })}></input>
+                            <p style={{ fontSize: '14px', marginBottom: '15px' }}>
+                                Enter your new password below
+                            </p>
+                            <input 
+                                type="password" 
+                                placeholder="Enter new password" 
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                            />
                             <button className="signup_button">Reset Password</button>
                         </form>
                     )}
                 </div>
                 <div className="card_terms">
-                    <span>Don't have an account yet?
-                        <Link to="/signup"> Sign Up</Link>
+                    <span>Remember your password?
+                        <Link to="/login"> Back to Login</Link>
                     </span>
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
 export default ForgotPassword;
